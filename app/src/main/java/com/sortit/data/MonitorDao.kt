@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MonitorDao {
+    @Query("SELECT * FROM monitors WHERE id = :id")
+    suspend fun get(id: Long): MonitorEntity?
+
     @Query("SELECT * FROM monitors ORDER BY isDefault DESC, name ASC")
     fun observeAll(): Flow<List<MonitorEntity>>
 

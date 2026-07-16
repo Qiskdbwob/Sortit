@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 class MonitorRepository(private val db: AppDatabase) {
     fun observe(): Flow<List<MonitorEntity>> = db.monitorDao().observeAll()
+    suspend fun get(id: Long): MonitorEntity? = db.monitorDao().get(id)
     suspend fun insert(m: MonitorEntity): Long = db.monitorDao().insert(m)
     suspend fun update(m: MonitorEntity) = db.monitorDao().update(m)
     suspend fun delete(m: MonitorEntity) = db.monitorDao().delete(m)
