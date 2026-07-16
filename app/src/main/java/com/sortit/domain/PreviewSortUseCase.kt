@@ -19,7 +19,6 @@ class PreviewSortUseCase(private val fileOps: FileOps) {
         for (root in roots) {
             if (SystemExcludes.isSystemPath(root)) continue
             fileOps.walkDeep(root)
-                .filter { it.isFile }
                 .filter { !SystemExcludes.isSystemPath(it.absolutePath) }
                 .filter { matchesExtension(it.name, exts) }
                 .filter { !isExcluded(it.absolutePath, it.name, excludePatterns) }
