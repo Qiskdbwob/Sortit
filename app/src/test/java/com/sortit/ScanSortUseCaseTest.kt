@@ -11,7 +11,7 @@ import java.io.File
 class FakeFileOps(private val files: List<File>) : FileOps {
     val moved = mutableListOf<Pair<String, String>>()
     override fun listFiles(dir: String): List<File> = files
-    override fun walkDeep(dir: String): Sequence<File> = files.asSequence()
+    override fun walkDeep(dir: String): Sequence<File> = files.asSequence().filter { it.absolutePath == dir || it.absolutePath.startsWith("$dir/") }
     override fun exists(path: String): Boolean = files.any { it.absolutePath == path }
     override fun size(path: String): Long = files.firstOrNull { it.absolutePath == path }?.length() ?: 0
     override fun lastModified(path: String): Long = 0
