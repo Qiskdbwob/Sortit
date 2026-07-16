@@ -1,0 +1,367 @@
+Build & Test	Set up job	﻿2026-07-16T04:34:55.2951200Z Current runner version: '2.335.1'
+Build & Test	Set up job	2026-07-16T04:34:55.2988312Z ##[group]Runner Image Provisioner
+Build & Test	Set up job	2026-07-16T04:34:55.2989702Z Hosted Compute Agent
+Build & Test	Set up job	2026-07-16T04:34:55.2990955Z Version: 20260624.560
+Build & Test	Set up job	2026-07-16T04:34:55.2992137Z Commit: 925d229a51159bc391ae97e54a2dd1fe20af789d
+Build & Test	Set up job	2026-07-16T04:34:55.2993481Z Build Date: 2026-06-24T18:26:47Z
+Build & Test	Set up job	2026-07-16T04:34:55.2994920Z Worker ID: {9f8c36da-776d-462f-b22c-085647a3608e}
+Build & Test	Set up job	2026-07-16T04:34:55.2996196Z Azure Region: westus3
+Build & Test	Set up job	2026-07-16T04:34:55.2997213Z ##[endgroup]
+Build & Test	Set up job	2026-07-16T04:34:55.3000333Z ##[group]Operating System
+Build & Test	Set up job	2026-07-16T04:34:55.3001445Z Ubuntu
+Build & Test	Set up job	2026-07-16T04:34:55.3002575Z 24.04.4
+Build & Test	Set up job	2026-07-16T04:34:55.3003596Z LTS
+Build & Test	Set up job	2026-07-16T04:34:55.3004530Z ##[endgroup]
+Build & Test	Set up job	2026-07-16T04:34:55.3005603Z ##[group]Runner Image
+Build & Test	Set up job	2026-07-16T04:34:55.3006722Z Image: ubuntu-24.04
+Build & Test	Set up job	2026-07-16T04:34:55.3008409Z Version: 20260705.232.1
+Build & Test	Set up job	2026-07-16T04:34:55.3010420Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260705.232/images/ubuntu/Ubuntu2404-Readme.md
+Build & Test	Set up job	2026-07-16T04:34:55.3013512Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260705.232
+Build & Test	Set up job	2026-07-16T04:34:55.3015342Z ##[endgroup]
+Build & Test	Set up job	2026-07-16T04:34:55.3018047Z ##[group]GITHUB_TOKEN Permissions
+Build & Test	Set up job	2026-07-16T04:34:55.3020745Z Contents: read
+Build & Test	Set up job	2026-07-16T04:34:55.3021776Z Metadata: read
+Build & Test	Set up job	2026-07-16T04:34:55.3022959Z Packages: read
+Build & Test	Set up job	2026-07-16T04:34:55.3023963Z ##[endgroup]
+Build & Test	Set up job	2026-07-16T04:34:55.3028202Z Secret source: Actions
+Build & Test	Set up job	2026-07-16T04:34:55.3029826Z Prepare workflow directory
+Build & Test	Set up job	2026-07-16T04:34:55.3600727Z Prepare all required actions
+Build & Test	Set up job	2026-07-16T04:34:55.3659980Z Getting action download info
+Build & Test	Set up job	2026-07-16T04:34:55.7047603Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+Build & Test	Set up job	2026-07-16T04:34:55.7938951Z Download action repository 'actions/setup-java@v4' (SHA:c1e323688fd81a25caa38c78aa6df2d33d3e20d9)
+Build & Test	Set up job	2026-07-16T04:34:56.7840645Z Download action repository 'gradle/actions@v4' (SHA:ed408507eac070d1f99cc633dbcf757c94c7933a)
+Build & Test	Set up job	2026-07-16T04:34:58.3622595Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+Build & Test	Set up job	2026-07-16T04:34:58.6159216Z Complete job name: Build & Test
+Build & Test	Checkout	﻿2026-07-16T04:34:58.6852440Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+Build & Test	Checkout	2026-07-16T04:34:58.6861099Z ##[group]Run actions/checkout@v4
+Build & Test	Checkout	2026-07-16T04:34:58.6861627Z with:
+Build & Test	Checkout	2026-07-16T04:34:58.6861894Z   repository: Qiskdbwob/Sortit
+Build & Test	Checkout	2026-07-16T04:34:58.6864382Z   token: ***
+Build & Test	Checkout	2026-07-16T04:34:58.6864630Z   ssh-strict: true
+Build & Test	Checkout	2026-07-16T04:34:58.6864876Z   ssh-user: git
+Build & Test	Checkout	2026-07-16T04:34:58.6865129Z   persist-credentials: true
+Build & Test	Checkout	2026-07-16T04:34:58.6865421Z   clean: true
+Build & Test	Checkout	2026-07-16T04:34:58.6865679Z   sparse-checkout-cone-mode: true
+Build & Test	Checkout	2026-07-16T04:34:58.6865979Z   fetch-depth: 1
+Build & Test	Checkout	2026-07-16T04:34:58.6866240Z   fetch-tags: false
+Build & Test	Checkout	2026-07-16T04:34:58.6866502Z   show-progress: true
+Build & Test	Checkout	2026-07-16T04:34:58.6866750Z   lfs: false
+Build & Test	Checkout	2026-07-16T04:34:58.6866981Z   submodules: false
+Build & Test	Checkout	2026-07-16T04:34:58.6867276Z   set-safe-directory: true
+Build & Test	Checkout	2026-07-16T04:34:58.6868073Z ##[endgroup]
+Build & Test	Checkout	2026-07-16T04:34:58.7980857Z Syncing repository: Qiskdbwob/Sortit
+Build & Test	Checkout	2026-07-16T04:34:58.7982801Z ##[group]Getting Git version info
+Build & Test	Checkout	2026-07-16T04:34:58.7983508Z Working directory is '/home/runner/work/Sortit/Sortit'
+Build & Test	Checkout	2026-07-16T04:34:58.8018087Z [command]/usr/bin/git version
+Build & Test	Checkout	2026-07-16T04:34:58.8135715Z git version 2.54.0
+Build & Test	Checkout	2026-07-16T04:34:58.8200315Z ##[endgroup]
+Build & Test	Checkout	2026-07-16T04:34:58.8248924Z Temporarily overriding HOME='/home/runner/work/_temp/4ebf3fae-260b-47fa-b731-74b4ede7e300' before making global git config changes
+Build & Test	Checkout	2026-07-16T04:34:58.8320783Z Adding repository directory to the temporary git global config as a safe directory
+Build & Test	Checkout	2026-07-16T04:34:58.8322319Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Sortit/Sortit
+Build & Test	Checkout	2026-07-16T04:34:58.8330057Z Deleting the contents of '/home/runner/work/Sortit/Sortit'
+Build & Test	Checkout	2026-07-16T04:34:58.8331797Z ##[group]Initializing the repository
+Build & Test	Checkout	2026-07-16T04:34:58.8333660Z [command]/usr/bin/git init /home/runner/work/Sortit/Sortit
+Build & Test	Checkout	2026-07-16T04:34:58.8415189Z hint: Using 'master' as the name for the initial branch. This default branch name
+Build & Test	Checkout	2026-07-16T04:34:58.8438486Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Build & Test	Checkout	2026-07-16T04:34:58.8445906Z hint: to use in all of your new repositories, which will suppress this warning,
+Build & Test	Checkout	2026-07-16T04:34:58.8447053Z hint: call:
+Build & Test	Checkout	2026-07-16T04:34:58.8448684Z hint:
+Build & Test	Checkout	2026-07-16T04:34:58.8451354Z hint: 	git config --global init.defaultBranch <name>
+Build & Test	Checkout	2026-07-16T04:34:58.8451971Z hint:
+Build & Test	Checkout	2026-07-16T04:34:58.8452532Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Build & Test	Checkout	2026-07-16T04:34:58.8453456Z hint: 'development'. The just-created branch can be renamed via this command:
+Build & Test	Checkout	2026-07-16T04:34:58.8454206Z hint:
+Build & Test	Checkout	2026-07-16T04:34:58.8454671Z hint: 	git branch -m <name>
+Build & Test	Checkout	2026-07-16T04:34:58.8455152Z hint:
+Build & Test	Checkout	2026-07-16T04:34:58.8455783Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Build & Test	Checkout	2026-07-16T04:34:58.8456778Z Initialized empty Git repository in /home/runner/work/Sortit/Sortit/.git/
+Build & Test	Checkout	2026-07-16T04:34:58.8458733Z [command]/usr/bin/git remote add origin https://github.com/Qiskdbwob/Sortit
+Build & Test	Checkout	2026-07-16T04:34:58.8610666Z ##[endgroup]
+Build & Test	Checkout	2026-07-16T04:34:58.8611441Z ##[group]Disabling automatic garbage collection
+Build & Test	Checkout	2026-07-16T04:34:58.8612122Z [command]/usr/bin/git config --local gc.auto 0
+Build & Test	Checkout	2026-07-16T04:34:58.8613569Z ##[endgroup]
+Build & Test	Checkout	2026-07-16T04:34:58.8614236Z ##[group]Setting up auth
+Build & Test	Checkout	2026-07-16T04:34:58.8614919Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Build & Test	Checkout	2026-07-16T04:34:58.8683237Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Build & Test	Checkout	2026-07-16T04:34:58.9214397Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Build & Test	Checkout	2026-07-16T04:34:58.9219799Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Build & Test	Checkout	2026-07-16T04:34:58.9488649Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Build & Test	Checkout	2026-07-16T04:34:58.9531034Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Build & Test	Checkout	2026-07-16T04:34:58.9810700Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Build & Test	Checkout	2026-07-16T04:34:58.9829531Z ##[endgroup]
+Build & Test	Checkout	2026-07-16T04:34:58.9831286Z ##[group]Fetching the repository
+Build & Test	Checkout	2026-07-16T04:34:58.9840837Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +9469cea50862e44e85c75d5cfe00e1ff390b3f0c:refs/remotes/origin/master
+Build & Test	Checkout	2026-07-16T04:34:59.4540666Z From https://github.com/Qiskdbwob/Sortit
+Build & Test	Checkout	2026-07-16T04:34:59.4669223Z  * [new ref]         9469cea50862e44e85c75d5cfe00e1ff390b3f0c -> origin/master
+Build & Test	Checkout	2026-07-16T04:34:59.4766258Z ##[endgroup]
+Build & Test	Checkout	2026-07-16T04:34:59.4767870Z ##[group]Determining the checkout info
+Build & Test	Checkout	2026-07-16T04:34:59.4769542Z ##[endgroup]
+Build & Test	Checkout	2026-07-16T04:34:59.4770269Z [command]/usr/bin/git sparse-checkout disable
+Build & Test	Checkout	2026-07-16T04:34:59.4778679Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Build & Test	Checkout	2026-07-16T04:34:59.4782999Z ##[group]Checking out the ref
+Build & Test	Checkout	2026-07-16T04:34:59.4783823Z [command]/usr/bin/git checkout --progress --force -B master refs/remotes/origin/master
+Build & Test	Checkout	2026-07-16T04:34:59.4846895Z Reset branch 'master'
+Build & Test	Checkout	2026-07-16T04:34:59.4850149Z branch 'master' set up to track 'origin/master'.
+Build & Test	Checkout	2026-07-16T04:34:59.4861698Z ##[endgroup]
+Build & Test	Checkout	2026-07-16T04:34:59.4919097Z [command]/usr/bin/git log -1 --format=%H
+Build & Test	Checkout	2026-07-16T04:34:59.4949341Z 9469cea50862e44e85c75d5cfe00e1ff390b3f0c
+Build & Test	Set up JDK 17	﻿2026-07-16T04:34:59.5235709Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5237728Z ##[group]Run actions/setup-java@v4
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5238012Z with:
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5238213Z   distribution: temurin
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5238438Z   java-version: 17
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5238648Z   java-package: jdk
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5238853Z   check-latest: false
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5239063Z   server-id: github
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5239278Z   server-username: GITHUB_ACTOR
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5239528Z   server-password: GITHUB_TOKEN
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5239776Z   overwrite-settings: true
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5240005Z   job-status: success
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5242345Z   token: ***
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.5242559Z ##[endgroup]
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7278086Z (node:2071) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7279837Z ##[group]Installed distributions
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7281222Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7768972Z Resolved Java 17.0.19+10 from tool-cache
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7771437Z Setting Java 17.0.19+10 as the default
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7776130Z Creating toolchains.xml for JDK version 17 from temurin
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7776842Z Writing to /home/runner/.m2/toolchains.xml
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7777219Z 
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7779781Z Java configuration:
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7780250Z   Distribution: temurin
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7780699Z   Version: 17.0.19+10
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7781317Z   Path: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7781841Z 
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7782351Z ##[endgroup]
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7809246Z Creating settings.xml with server-id: github
+Build & Test	Set up JDK 17	2026-07-16T04:34:59.7809881Z Writing to /home/runner/.m2/settings.xml
+Build & Test	Setup Gradle	﻿2026-07-16T04:34:59.8205919Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8208839Z ##[group]Run gradle/actions/setup-gradle@v4
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8209369Z with:
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8209706Z   cache-disabled: false
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8210118Z   cache-read-only: false
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8210556Z   cache-write-only: false
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8210990Z   cache-overwrite-existing: false
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8211462Z   cache-cleanup: on-success
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8211992Z   gradle-home-cache-includes: caches
+Build & Test	Setup Gradle	notifications
+Build & Test	Setup Gradle	
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8212655Z   add-job-summary: always
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8213142Z   add-job-summary-as-pr-comment: never
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8213687Z   dependency-graph: disabled
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8214240Z   dependency-graph-report-dir: dependency-graph-reports
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8214968Z   dependency-graph-continue-on-failure: true
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8215535Z   build-scan-publish: false
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8215968Z   validate-wrappers: true
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8216432Z   allow-snapshot-wrappers: false
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8216950Z   gradle-home-cache-strict-match: false
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8217771Z   workflow-job-context: null
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8222177Z   github-token: ***
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8222598Z env:
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8223151Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8224084Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+Build & Test	Setup Gradle	2026-07-16T04:34:59.8224831Z ##[endgroup]
+Build & Test	Setup Gradle	2026-07-16T04:35:00.3846927Z Merged default JDK locations into /home/runner/.m2/toolchains.xml
+Build & Test	Setup Gradle	2026-07-16T04:35:00.3850434Z Preparing cache for cleanup.
+Build & Test	Setup Gradle	2026-07-16T04:35:00.3855489Z ##[group]Restore Gradle state from cache
+Build & Test	Setup Gradle	2026-07-16T04:35:00.6452003Z Cache hit for restore-key: gradle-home-v1|Linux-X64|build-and-test[b8a35c2f917259958c9abe8f2ff1b5ff]-0a62d016b7e5475a45de831b24ae4a967e427663
+Build & Test	Setup Gradle	2026-07-16T04:35:01.4667218Z Received 621044 of 621044 (100.0%), 1.0 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:01.4669629Z Cache Size: ~1 MB (621044 B)
+Build & Test	Setup Gradle	2026-07-16T04:35:01.4671240Z [command]/usr/bin/tar -xf /home/runner/work/_temp/3cd28a7d-c37d-4243-adfa-79d90117d090/cache.tzst -P -C /home/runner/work/Sortit/Sortit --use-compress-program unzstd
+Build & Test	Setup Gradle	2026-07-16T04:35:01.5732157Z Cache restored successfully
+Build & Test	Setup Gradle	2026-07-16T04:35:01.5736771Z Restored cache entry with key gradle-home-v1|Linux-X64|build-and-test[b8a35c2f917259958c9abe8f2ff1b5ff]-9469cea50862e44e85c75d5cfe00e1ff390b3f0c to /home/runner/.gradle/caches,/home/runner/.gradle/notifications,/home/runner/.gradle/.setup-gradle in 1187ms
+Build & Test	Setup Gradle	2026-07-16T04:35:01.7924503Z Cache hit for: gradle-kotlin-dsl-v1-0a98c54f007acd6b1474123a0b5c2ef3
+Build & Test	Setup Gradle	2026-07-16T04:35:01.7946035Z Cache hit for: gradle-transforms-v1-0d266c2beb36f2398482a29583b5745d
+Build & Test	Setup Gradle	2026-07-16T04:35:01.7973873Z Cache hit for: gradle-dependencies-v1-f4bf2ba67edf1eba851f3e14df708cb2
+Build & Test	Setup Gradle	2026-07-16T04:35:01.8139529Z Cache hit for: gradle-generated-gradle-jars-v1-26cfecc158c44513d188405a5d2d0d9c
+Build & Test	Setup Gradle	2026-07-16T04:35:01.8233924Z Cache hit for: gradle-instrumented-jars-v1-5097687f5e544e990b63b4f224dc7144
+Build & Test	Setup Gradle	2026-07-16T04:35:01.8246460Z Cache hit for: gradle-wrapper-zips-v1-df6ecc383658ce44d9cbac4d1bfd12bf
+Build & Test	Setup Gradle	2026-07-16T04:35:01.8259350Z Cache hit for: gradle-groovy-dsl-v1-d64978a2a5ed826191cf601cc5e1acda
+Build & Test	Setup Gradle	2026-07-16T04:35:02.0079213Z Received 115978 of 115978 (100.0%), 0.7 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:02.0080805Z Cache Size: ~0 MB (115978 B)
+Build & Test	Setup Gradle	2026-07-16T04:35:02.1116446Z [command]/usr/bin/tar -xf /home/runner/work/_temp/4292697b-9474-4e79-bc09-0a63c0b19d3f/cache.tzst -P -C /home/runner/work/Sortit/Sortit --use-compress-program unzstd
+Build & Test	Setup Gradle	2026-07-16T04:35:02.1739343Z Cache restored successfully
+Build & Test	Setup Gradle	2026-07-16T04:35:02.1742041Z Restored cache entry with key gradle-kotlin-dsl-v1-0a98c54f007acd6b1474123a0b5c2ef3 to /home/runner/.gradle/caches/*/kotlin-dsl/accessors/*/,/home/runner/.gradle/caches/*/kotlin-dsl/scripts/*/ in 598ms
+Build & Test	Setup Gradle	2026-07-16T04:35:02.4091939Z Received 72256 of 72256 (100.0%), 0.2 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:02.4093094Z Cache Size: ~0 MB (72256 B)
+Build & Test	Setup Gradle	2026-07-16T04:35:02.4199537Z [command]/usr/bin/tar -xf /home/runner/work/_temp/f5edf342-e5a5-4f9a-8d2e-0c1619f35694/cache.tzst -P -C /home/runner/work/Sortit/Sortit --use-compress-program unzstd
+Build & Test	Setup Gradle	2026-07-16T04:35:02.4291899Z Received 111541 of 111541 (100.0%), 0.3 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:02.4292955Z Cache Size: ~0 MB (111541 B)
+Build & Test	Setup Gradle	2026-07-16T04:35:02.4311521Z Cache restored successfully
+Build & Test	Setup Gradle	2026-07-16T04:35:02.4314965Z Restored cache entry with key gradle-instrumented-jars-v1-5097687f5e544e990b63b4f224dc7144 to /home/runner/.gradle/caches/jars-*/*/ in 856ms
+Build & Test	Setup Gradle	2026-07-16T04:35:02.4324228Z [command]/usr/bin/tar -xf /home/runner/work/_temp/aaad45d3-c796-4667-a165-416eb95ea39a/cache.tzst -P -C /home/runner/work/Sortit/Sortit --use-compress-program unzstd
+Build & Test	Setup Gradle	2026-07-16T04:35:02.4498902Z Cache restored successfully
+Build & Test	Setup Gradle	2026-07-16T04:35:02.4514539Z Restored cache entry with key gradle-groovy-dsl-v1-d64978a2a5ed826191cf601cc5e1acda to /home/runner/.gradle/caches/*/groovy-dsl/*/ in 873ms
+Build & Test	Setup Gradle	2026-07-16T04:35:03.0498275Z Received 0 of 272052778 (0.0%), 0.0 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:03.0507296Z Received 4194304 of 190194470 (2.2%), 4.0 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:03.0679107Z Received 4194304 of 39619900 (10.6%), 4.0 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:03.0836757Z Received 12582912 of 135426545 (9.3%), 11.9 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:03.4959208Z Received 39619900 of 39619900 (100.0%), 26.3 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:03.4960955Z Cache Size: ~38 MB (39619900 B)
+Build & Test	Setup Gradle	2026-07-16T04:35:03.5584850Z [command]/usr/bin/tar -xf /home/runner/work/_temp/537f7d8b-ccb8-4fe4-889b-414f02bdea0f/cache.tzst -P -C /home/runner/work/Sortit/Sortit --use-compress-program unzstd
+Build & Test	Setup Gradle	2026-07-16T04:35:04.0487949Z Received 88080384 of 272052778 (32.4%), 41.5 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:04.0858096Z Received 67108864 of 190194470 (35.3%), 31.4 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:04.0878073Z Received 88080384 of 135426545 (65.0%), 41.7 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:04.3313523Z Cache restored successfully
+Build & Test	Setup Gradle	2026-07-16T04:35:04.3432576Z Restored cache entry with key gradle-generated-gradle-jars-v1-26cfecc158c44513d188405a5d2d0d9c to /home/runner/.gradle/caches/8.9/generated-gradle-jars/gradle-api-8.9.jar in 2769ms
+Build & Test	Setup Gradle	2026-07-16T04:35:05.0529500Z Received 192937984 of 272052778 (70.9%), 60.8 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:05.0719652Z Received 135426545 of 135426545 (100.0%), 43.1 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:05.0726067Z Cache Size: ~129 MB (135426545 B)
+Build & Test	Setup Gradle	2026-07-16T04:35:05.1089002Z Received 155189248 of 190194470 (81.6%), 48.3 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:05.2166655Z [command]/usr/bin/tar -xf /home/runner/work/_temp/0594ad29-7939-4c89-8e87-9dfd6bcbfadb/cache.tzst -P -C /home/runner/work/Sortit/Sortit --use-compress-program unzstd
+Build & Test	Setup Gradle	2026-07-16T04:35:05.4567191Z Received 190194470 of 190194470 (100.0%), 53.2 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:05.4599137Z Cache Size: ~181 MB (190194470 B)
+Build & Test	Setup Gradle	2026-07-16T04:35:05.4789673Z [command]/usr/bin/tar -xf /home/runner/work/_temp/699a8fee-a84c-48cf-a87d-0586347e290f/cache.tzst -P -C /home/runner/work/Sortit/Sortit --use-compress-program unzstd
+Build & Test	Setup Gradle	2026-07-16T04:35:05.8578472Z Cache restored successfully
+Build & Test	Setup Gradle	2026-07-16T04:35:06.0528120Z Received 268435456 of 272052778 (98.7%), 63.6 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:06.1070570Z Received 272052778 of 272052778 (100.0%), 63.6 MBs/sec
+Build & Test	Setup Gradle	2026-07-16T04:35:06.1078108Z Cache Size: ~259 MB (272052778 B)
+Build & Test	Setup Gradle	2026-07-16T04:35:06.1119044Z [command]/usr/bin/tar -xf /home/runner/work/_temp/fc52e5bc-996e-4eb1-b78f-48dd76d0db8b/cache.tzst -P -C /home/runner/work/Sortit/Sortit --use-compress-program unzstd
+Build & Test	Setup Gradle	2026-07-16T04:35:06.2267200Z Restored cache entry with key gradle-wrapper-zips-v1-df6ecc383658ce44d9cbac4d1bfd12bf to /home/runner/.gradle/wrapper/dists/gradle-8.9-bin/90cnw93cvbtalezasaz0blq0a in 4652ms
+Build & Test	Setup Gradle	2026-07-16T04:35:09.9916141Z Cache restored successfully
+Build & Test	Setup Gradle	2026-07-16T04:35:10.0063149Z Cache restored successfully
+Build & Test	Setup Gradle	2026-07-16T04:35:10.1246051Z Restored cache entry with key gradle-transforms-v1-0d266c2beb36f2398482a29583b5745d to /home/runner/.gradle/caches/transforms-4/*/,/home/runner/.gradle/caches/*/transforms/*/ in 8547ms
+Build & Test	Setup Gradle	2026-07-16T04:35:10.3743916Z Restored cache entry with key gradle-dependencies-v1-f4bf2ba67edf1eba851f3e14df708cb2 to /home/runner/.gradle/caches/modules-*/files-*/*/*/*/* in 8797ms
+Build & Test	Setup Gradle	2026-07-16T04:35:10.3828595Z ##[endgroup]
+Build & Test	Setup Gradle	2026-07-16T04:35:10.3956574Z ##[group]All Gradle Wrapper jars are valid
+Build & Test	Setup Gradle	2026-07-16T04:35:10.3960309Z ✓ Found known Gradle Wrapper JAR files:
+Build & Test	Setup Gradle	2026-07-16T04:35:10.3962633Z   498495120a03b9a6ab5d155f5de3c8f0d986a449153702fb80fc80e134484f17 gradle/wrapper/gradle-wrapper.jar
+Build & Test	Setup Gradle	2026-07-16T04:35:10.3963800Z ##[endgroup]
+Build & Test	Grant execute permission	﻿2026-07-16T04:35:10.4592740Z ##[group]Run chmod +x ./gradlew
+Build & Test	Grant execute permission	2026-07-16T04:35:10.4593143Z ^[[36;1mchmod +x ./gradlew^[[0m
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0239001Z shell: /usr/bin/bash -e {0}
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0239540Z env:
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0240178Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0241211Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0242052Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0242650Z   GRADLE_USER_HOME: /home/runner/.gradle
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0243250Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0243868Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0244743Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0245705Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0246481Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+Build & Test	Grant execute permission	2026-07-16T04:35:11.0247038Z ##[endgroup]
+Build & Test	Unit tests	﻿2026-07-16T04:35:11.0410280Z ##[group]Run ./gradlew testDebugUnitTest --no-daemon
+Build & Test	Unit tests	2026-07-16T04:35:11.0410761Z ^[[36;1m./gradlew testDebugUnitTest --no-daemon^[[0m
+Build & Test	Unit tests	2026-07-16T04:35:11.0441198Z shell: /usr/bin/bash -e {0}
+Build & Test	Unit tests	2026-07-16T04:35:11.0441502Z env:
+Build & Test	Unit tests	2026-07-16T04:35:11.0442042Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+Build & Test	Unit tests	2026-07-16T04:35:11.0442630Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+Build & Test	Unit tests	2026-07-16T04:35:11.0443129Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+Build & Test	Unit tests	2026-07-16T04:35:11.0443493Z   GRADLE_USER_HOME: /home/runner/.gradle
+Build & Test	Unit tests	2026-07-16T04:35:11.0443827Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+Build & Test	Unit tests	2026-07-16T04:35:11.0444169Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
+Build & Test	Unit tests	2026-07-16T04:35:11.0444655Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+Build & Test	Unit tests	2026-07-16T04:35:11.0445179Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+Build & Test	Unit tests	2026-07-16T04:35:11.0445540Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+Build & Test	Unit tests	2026-07-16T04:35:11.0445858Z ##[endgroup]
+Build & Test	Unit tests	2026-07-16T04:35:14.3940278Z To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Build & Test	Unit tests	2026-07-16T04:35:16.3885548Z Daemon will be stopped at the end of the build 
+Build & Test	Unit tests	2026-07-16T04:35:29.1965294Z > Task :app:checkKotlinGradlePluginConfigurationErrors
+Build & Test	Unit tests	2026-07-16T04:35:29.2054672Z > Task :app:preBuild UP-TO-DATE
+Build & Test	Unit tests	2026-07-16T04:35:29.2068110Z > Task :app:preDebugBuild UP-TO-DATE
+Build & Test	Unit tests	2026-07-16T04:35:29.8895378Z > Task :app:generateDebugResValues
+Build & Test	Unit tests	2026-07-16T04:35:29.9900624Z > Task :app:checkDebugAarMetadata
+Build & Test	Unit tests	2026-07-16T04:35:29.9927981Z > Task :app:mapDebugSourceSetPaths
+Build & Test	Unit tests	2026-07-16T04:35:29.9948005Z > Task :app:generateDebugResources
+Build & Test	Unit tests	2026-07-16T04:35:31.4887171Z > Task :app:packageDebugResources
+Build & Test	Unit tests	2026-07-16T04:35:32.4912928Z > Task :app:parseDebugLocalResources
+Build & Test	Unit tests	2026-07-16T04:35:32.4961834Z > Task :app:createDebugCompatibleScreenManifests
+Build & Test	Unit tests	2026-07-16T04:35:32.4982500Z > Task :app:extractDeepLinksDebug
+Build & Test	Unit tests	2026-07-16T04:35:32.7898595Z > Task :app:mergeDebugResources
+Build & Test	Unit tests	2026-07-16T04:35:32.9918580Z > Task :app:processDebugMainManifest
+Build & Test	Unit tests	2026-07-16T04:35:33.1885387Z > Task :app:processDebugManifest
+Build & Test	Unit tests	2026-07-16T04:35:33.2885712Z > Task :app:processDebugManifestForPackage
+Build & Test	Unit tests	2026-07-16T04:35:33.2898238Z > Task :app:javaPreCompileDebug
+Build & Test	Unit tests	2026-07-16T04:35:33.5888646Z > Task :app:preDebugUnitTestBuild UP-TO-DATE
+Build & Test	Unit tests	2026-07-16T04:35:33.5908306Z > Task :app:javaPreCompileDebugUnitTest
+Build & Test	Unit tests	2026-07-16T04:35:33.9915293Z > Task :app:processDebugResources
+Build & Test	Unit tests	2026-07-16T04:35:42.5895372Z > Task :app:kspDebugKotlin
+Build & Test	Unit tests	2026-07-16T04:35:49.9898136Z 
+Build & Test	Unit tests	2026-07-16T04:35:49.9941074Z e: file:///home/runner/work/Sortit/Sortit/app/src/main/java/com/sortit/ui/SortirScreen.kt:45:17 None of the following functions can be called with the arguments supplied: 
+Build & Test	Unit tests	2026-07-16T04:35:49.9942666Z > Task :app:compileDebugKotlin FAILED
+Build & Test	Unit tests	2026-07-16T04:35:49.9959514Z public fun LinearProgressIndicator(progress: () -> Float, modifier: Modifier = ..., color: Color = ..., trackColor: Color = ..., strokeCap: StrokeCap = ..., gapSize: Dp = ..., drawStopIndicator: DrawScope.() -> Unit = ...): Unit defined in androidx.compose.material3
+Build & Test	Unit tests	2026-07-16T04:35:49.9988980Z public fun LinearProgressIndicator(modifier: Modifier = ..., color: Color = ..., trackColor: Color = ..., strokeCap: StrokeCap = ..., gapSize: Dp = ...): Unit defined in androidx.compose.material3
+Build & Test	Unit tests	2026-07-16T04:35:50.0007200Z public fun LinearProgressIndicator(progress: Float, modifier: Modifier = ..., color: Color = ..., trackColor: Color = ..., strokeCap: StrokeCap = ...): Unit defined in androidx.compose.material3
+Build & Test	Unit tests	2026-07-16T04:35:50.0029739Z e: file:///home/runner/work/Sortit/Sortit/app/src/main/java/com/sortit/ui/TemplateScreen.kt:43:5 None of the following functions can be called with the arguments supplied: 
+Build & Test	Unit tests	2026-07-16T04:35:50.0079799Z public fun Card(onClick: () -> Unit, modifier: Modifier = ..., enabled: Boolean = ..., shape: Shape = ..., colors: CardColors = ..., elevation: CardElevation = ..., border: BorderStroke? = ..., interactionSource: MutableInteractionSource? = ..., content: ColumnScope.() -> Unit): Unit defined in androidx.compose.material3
+Build & Test	Unit tests	2026-07-16T04:35:50.0119221Z public fun Card(modifier: Modifier = ..., shape: Shape = ..., colors: CardColors = ..., elevation: CardElevation = ..., border: BorderStroke? = ..., content: ColumnScope.() -> Unit): Unit defined in androidx.compose.material3
+Build & Test	Unit tests	2026-07-16T04:35:50.0149241Z e: file:///home/runner/work/Sortit/Sortit/app/src/main/java/com/sortit/ui/TemplateScreen.kt:44:9 @Composable invocations can only happen from the context of a @Composable function
+Build & Test	Unit tests	2026-07-16T04:35:50.0918927Z gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1784176519935.json
+Build & Test	Unit tests	2026-07-16T04:35:50.0925152Z 
+Build & Test	Unit tests	2026-07-16T04:35:50.0938239Z 18 actionable tasks: 18 executed
+Build & Test	Unit tests	2026-07-16T04:35:50.0958076Z FAILURE: Build failed with an exception.
+Build & Test	Unit tests	2026-07-16T04:35:50.0967910Z 
+Build & Test	Unit tests	2026-07-16T04:35:50.0991377Z * What went wrong:
+Build & Test	Unit tests	2026-07-16T04:35:50.1004640Z Execution failed for task ':app:compileDebugKotlin'.
+Build & Test	Unit tests	2026-07-16T04:35:50.1030484Z > A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+Build & Test	Unit tests	2026-07-16T04:35:50.1053862Z    > Compilation error. See log for more details
+Build & Test	Unit tests	2026-07-16T04:35:50.1056293Z 
+Build & Test	Unit tests	2026-07-16T04:35:50.1081889Z * Try:
+Build & Test	Unit tests	2026-07-16T04:35:50.1089989Z > Run with --stacktrace option to get the stack trace.
+Build & Test	Unit tests	2026-07-16T04:35:50.1098118Z > Run with --info or --debug option to get more log output.
+Build & Test	Unit tests	2026-07-16T04:35:50.1115800Z > Run with --scan to get full insights.
+Build & Test	Unit tests	2026-07-16T04:35:50.1116778Z > Get more help at https://help.gradle.org.
+Build & Test	Unit tests	2026-07-16T04:35:50.1117778Z 
+Build & Test	Unit tests	2026-07-16T04:35:50.1118157Z BUILD FAILED in 38s
+Build & Test	Unit tests	2026-07-16T04:35:50.6939649Z ##[error]Process completed with exit code 1.
+Build & Test	Upload test results	﻿2026-07-16T04:35:50.7026506Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+Build & Test	Upload test results	2026-07-16T04:35:50.7028233Z ##[group]Run actions/upload-artifact@v4
+Build & Test	Upload test results	2026-07-16T04:35:50.7028574Z with:
+Build & Test	Upload test results	2026-07-16T04:35:50.7028846Z   name: test-results
+Build & Test	Upload test results	2026-07-16T04:35:50.7029155Z   path: app/build/test-results/testDebugUnitTest/
+Build & Test	Upload test results	2026-07-16T04:35:50.7029517Z   if-no-files-found: warn
+Build & Test	Upload test results	2026-07-16T04:35:50.7029797Z   compression-level: 6
+Build & Test	Upload test results	2026-07-16T04:35:50.7030065Z   overwrite: false
+Build & Test	Upload test results	2026-07-16T04:35:50.7030319Z   include-hidden-files: false
+Build & Test	Upload test results	2026-07-16T04:35:50.7030601Z env:
+Build & Test	Upload test results	2026-07-16T04:35:50.7030943Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+Build & Test	Upload test results	2026-07-16T04:35:50.7031494Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+Build & Test	Upload test results	2026-07-16T04:35:50.7032013Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+Build & Test	Upload test results	2026-07-16T04:35:50.7032364Z   GRADLE_USER_HOME: /home/runner/.gradle
+Build & Test	Upload test results	2026-07-16T04:35:50.7032698Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+Build & Test	Upload test results	2026-07-16T04:35:50.7033039Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
+Build & Test	Upload test results	2026-07-16T04:35:50.7033528Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+Build & Test	Upload test results	2026-07-16T04:35:50.7034063Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+Build & Test	Upload test results	2026-07-16T04:35:50.7034429Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+Build & Test	Upload test results	2026-07-16T04:35:50.7034734Z ##[endgroup]
+Build & Test	Upload test results	2026-07-16T04:35:50.8861533Z (node:2345) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Build & Test	Upload test results	2026-07-16T04:35:50.8863269Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Build & Test	Upload test results	2026-07-16T04:35:50.8913782Z ##[warning]No files were found with the provided path: app/build/test-results/testDebugUnitTest/. No artifacts will be uploaded.
+Build & Test	Post Setup Gradle	﻿2026-07-16T04:35:50.9405438Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+Build & Test	Post Setup Gradle	2026-07-16T04:35:50.9408278Z Post job cleanup.
+Build & Test	Post Setup Gradle	2026-07-16T04:35:51.2438429Z In post-action step
+Build & Test	Post Setup Gradle	2026-07-16T04:35:51.2468532Z ##[group]Stopping Gradle daemons
+Build & Test	Post Setup Gradle	2026-07-16T04:35:51.2474008Z Stopping Gradle daemons for /home/runner/.gradle/wrapper/dists/gradle-8.9-bin/90cnw93cvbtalezasaz0blq0a/gradle-8.9
+Build & Test	Post Setup Gradle	2026-07-16T04:35:51.2498528Z [command]/home/runner/.gradle/wrapper/dists/gradle-8.9-bin/90cnw93cvbtalezasaz0blq0a/gradle-8.9/bin/gradle --stop
+Build & Test	Post Setup Gradle	2026-07-16T04:35:52.3128555Z No Gradle daemons are running.
+Build & Test	Post Setup Gradle	2026-07-16T04:35:52.3327089Z ##[endgroup]
+Build & Test	Post Setup Gradle	2026-07-16T04:35:52.3332357Z Not performing cache-cleanup due to build failure
+Build & Test	Post Setup Gradle	2026-07-16T04:35:52.3333763Z ##[group]Caching Gradle state
+Build & Test	Post Setup Gradle	2026-07-16T04:35:53.8239503Z [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/runner/work/Sortit/Sortit --files-from manifest.txt --use-compress-program zstdmt
+Build & Test	Post Setup Gradle	2026-07-16T04:35:54.6417323Z Sent 632824 of 632824 (100.0%), 1.2 MBs/sec
+Build & Test	Post Setup Gradle	2026-07-16T04:35:54.8685739Z Saved cache entry with key gradle-home-v1|Linux-X64|build-and-test[b8a35c2f917259958c9abe8f2ff1b5ff]-9469cea50862e44e85c75d5cfe00e1ff390b3f0c from /home/runner/.gradle/caches,/home/runner/.gradle/notifications,/home/runner/.gradle/.setup-gradle in 1062ms
+Build & Test	Post Setup Gradle	2026-07-16T04:35:54.8688830Z ##[endgroup]
+Build & Test	Post Setup Gradle	2026-07-16T04:35:54.8693828Z Generating Job Summary
+Build & Test	Post Setup Gradle	2026-07-16T04:35:54.8706733Z Completed post-action step
+Build & Test	Post Set up JDK 17	﻿2026-07-16T04:35:54.8898768Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+Build & Test	Post Set up JDK 17	2026-07-16T04:35:54.8900145Z Post job cleanup.
+Build & Test	Post Set up JDK 17	2026-07-16T04:35:55.0240975Z (node:2412) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Build & Test	Post Set up JDK 17	2026-07-16T04:35:55.0242657Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Build & Test	Post Checkout	﻿2026-07-16T04:35:55.0518131Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+Build & Test	Post Checkout	2026-07-16T04:35:55.0520475Z Post job cleanup.
+Build & Test	Post Checkout	2026-07-16T04:35:55.1887983Z [command]/usr/bin/git version
+Build & Test	Post Checkout	2026-07-16T04:35:55.1957017Z git version 2.54.0
+Build & Test	Post Checkout	2026-07-16T04:35:55.2031256Z Temporarily overriding HOME='/home/runner/work/_temp/97b0d5bf-e4de-4bd4-ae99-f2cd49f56367' before making global git config changes
+Build & Test	Post Checkout	2026-07-16T04:35:55.2032919Z Adding repository directory to the temporary git global config as a safe directory
+Build & Test	Post Checkout	2026-07-16T04:35:55.2034604Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Sortit/Sortit
+Build & Test	Post Checkout	2026-07-16T04:35:55.2158304Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Build & Test	Post Checkout	2026-07-16T04:35:55.2212452Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Build & Test	Post Checkout	2026-07-16T04:35:55.2540440Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Build & Test	Post Checkout	2026-07-16T04:35:55.2583882Z http.https://github.com/.extraheader
+Build & Test	Post Checkout	2026-07-16T04:35:55.2603295Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+Build & Test	Post Checkout	2026-07-16T04:35:55.2653850Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Build & Test	Post Checkout	2026-07-16T04:35:55.3020381Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Build & Test	Post Checkout	2026-07-16T04:35:55.3104352Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Build & Test	Complete job	﻿2026-07-16T04:35:55.3638144Z Cleaning up orphan processes
+Build & Test	Complete job	2026-07-16T04:35:55.3928776Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-java@v4, actions/upload-artifact@v4, gradle/actions/setup-gradle@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

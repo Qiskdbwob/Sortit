@@ -40,7 +40,7 @@ fun TemplateScreen(vm: TemplateViewModel) {
 
 @Composable
 fun TemplateRow(t: TemplateEntity, onToggle: (Boolean) -> Unit, onDelete: () -> Unit, onRun: () -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(4.dp), onClick = onRun) {
+    Card(Modifier.fillMaxWidth().padding(4.dp).clickable { onRun() }) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(t.name, style = MaterialTheme.typography.titleMedium)

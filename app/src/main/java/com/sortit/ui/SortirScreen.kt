@@ -42,7 +42,7 @@ fun SortirScreen(vm: SortRunViewModel, templateVm: TemplateViewModel) {
             }
             is SortUiState.Running -> {
                 Text("Memindah ${s.done + s.failed}/${s.total}  (gagal: ${s.failed})")
-                LinearProgressIndicator(Modifier.fillMaxWidth(), progress = { (s.done + s.failed).toFloat() / s.total })
+                LinearProgressIndicator(progress = (s.done + s.failed).toFloat() / s.total, modifier = Modifier.fillMaxWidth())
             }
             is SortUiState.Done -> {
                 Text("Selesai. Berhasil: ${s.done}, Gagal: ${s.failed}")
