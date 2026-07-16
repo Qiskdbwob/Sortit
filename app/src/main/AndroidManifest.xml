@@ -16,12 +16,12 @@
         android:label="Sortit"
         android:supportsRtl="true"
         android:theme="@style/Theme.Sortit"
+        android:name=".SortitApplication"
         tools:targetApi="31">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="Sortit"
-        android:name=".SortitApplication">
+            android:label="Sortit">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
