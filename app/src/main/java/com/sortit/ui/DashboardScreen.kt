@@ -36,6 +36,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import java.io.File
 import com.sortit.data.MonitorEntity
 import com.sortit.data.SortLogEntity
 import com.sortit.domain.ScanPathUseCase
@@ -65,6 +71,8 @@ fun DashboardScreen(
     val active by vm.activeScan.collectAsState()
     val recent by vm.recentLogs.collectAsState()
     val trashed by vm.trashedFiles.collectAsState()
+    var showMovedFolders by remember { mutableStateOf(false) }
+    var showTrashStructure by remember { mutableStateOf(false) }
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -81,8 +89,8 @@ fun DashboardScreen(
 
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MetricCard("Dipindahkan", counts.moved.toString(), "file masuk folder target", Icons.Default.CheckCircle, Modifier.weight(1f))
-                MetricCard("Trash", counts.trashed.toString(), "file diamankan ke .sortit-trash", Icons.Default.Delete, Modifier.weight(1f))
+                MetricCard("Dipindahkan", counts.moved.toString(), "file masuk folder target", Icons.Default.CheckCircle, Modifier.weight(1f).clickable { showMovedFolders = true })
+                MetricCard("Trash", counts.trashed.toString(), "file diamankan ke .sortit-trash", Icons.Default.Delete, Modifier.weight(1f).clickable { showTrashStructure = true })
             }
         }
         item {
@@ -186,6 +194,71 @@ fun DashboardScreen(
                 }
             }
         }
+    }
+
+    if (showMovedFolders) {
+        val context = LocalContext.current
+        AlertDialog(
+            onDismissRequest = { showMovedFolders = false },
+            title = { Text("Folder Tujuan") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Tap folder untuk buka di file manager.")
+                    templates.filter { it.enabled }.forEach { t ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable {
+                                openPathInFileManager(context, t.targetTreeUri)
+                                showMovedFolders = false
+                            }.padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.FolderOpen, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.size(10.dp))
+                            Column {
+                                Text(t.name, fontWeight = FontWeight.SemiBold)
+                                OneLinePath(t.targetTreeUri)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showMovedFolders = false }) { Text("Tutup") } }
+        )
+    }
+
+    if (showTrashStructure) {
+        val context = LocalContext.current
+        AlertDialog(
+            onDismissRequest = { showTrashStructure = false },
+            title = { Text("Struktur Trash") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("File di-trash dikelompokkan berdasarkan ekstensi.")
+                    if (trashed.isEmpty()) {
+                        Text("Tidak ada file di trash.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        trashed.groupBy { File(it.dstPath).extension.lowercase() }.forEach { (ext, files) ->
+                            Row(
+                                Modifier.fillMaxWidth().clickable {
+                                    val trashExtDir = File(com.sortit.repo.FileOps.TRASH_ROOT, ext)
+                                    if (trashExtDir.exists()) openPathInFileManager(context, trashExtDir.absolutePath)
+                                    showTrashStructure = false
+                                }.padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.FolderOpen, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.size(10.dp))
+                                Column {
+                                    Text("$ext (${files.size} file)", fontWeight = FontWeight.SemiBold)
+                                    OneLinePath("${com.sortit.repo.FileOps.TRASH_ROOT}/$ext")
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showTrashStructure = false }) { Text("Tutup") } }
+        )
     }
 }
 

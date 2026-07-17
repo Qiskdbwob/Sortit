@@ -40,6 +40,9 @@ class ScanSortUseCase(private val fileOps: FileOps) {
         var found = 0
         val errors = mutableListOf<String>()
         val seen = mutableSetOf<String>()
+        // Exclude folder tujuan rule + trash dari scan
+        val targetDirs = templates.mapNotNull { it.targetTreeUri.ifBlank { null } }.toSet()
+        val trashDir = com.sortit.repo.FileOps.TRASH_ROOT
         for (template in templates.filter { it.enabled }) {
             val exts = parseExtensions(template.extensions)
             if (exts.isEmpty()) continue
@@ -60,6 +63,8 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                         val path = f.absolutePath
                         val matches = fileOps.exists(path) &&
                                 !SystemExcludes.isSystemPath(path) &&
+                                !path.startsWith(trashDir) &&
+                                !targetDirs.any { path.startsWith(it) } &&
                                 matchesExtension(f.name, exts) &&
                                 !isExcluded(path, f.name, excludePatterns) &&
                                 seen.add(path)

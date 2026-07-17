@@ -6,6 +6,7 @@ import android.os.FileObserver
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,9 +20,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -51,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import com.sortit.data.MonitorEntity
 import com.sortit.domain.FileItem
 import com.sortit.domain.ScanPathUseCase
+import com.sortit.repo.FileOps
 import com.sortit.ui.components.EmptyState
 import com.sortit.ui.components.MediaThumb
 import com.sortit.ui.components.OneLinePath
@@ -62,7 +68,9 @@ import com.sortit.util.SystemExcludes
 import com.sortit.util.truncateFileName
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -156,6 +164,16 @@ private fun MonitorCard(m: MonitorEntity, onToggle: (Boolean) -> Unit, onDelete:
 @Composable
 private fun MonitorFileRow(item: FileItem, onMove: ((FileItem) -> Unit)? = null, onDelete: ((FileItem) -> Unit)? = null) {
     val context = LocalContext.current
+    var showMenu by remember { mutableStateOf(false) }
+    val moveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        uri?.let {
+            context.contentResolver.takePersistableUriPermission(it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            val destPath = com.sortit.util.StoragePaths.uriToPath(it) ?: it.toString()
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                com.sortit.ui.RealFileOpsHolder.ops.move(item.path, destPath)
+            }
+        }
+    }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         MediaThumb(item.name, item.path, item.mimeType, item.isMedia, Modifier.size(44.dp))
         Spacer(Modifier.size(10.dp))
@@ -166,14 +184,37 @@ private fun MonitorFileRow(item: FileItem, onMove: ((FileItem) -> Unit)? = null,
         IconButton(onClick = { openPathInFileManager(context, item.path) }) {
             Icon(Icons.Default.OpenInNew, contentDescription = "Buka", modifier = Modifier.size(18.dp))
         }
-        if (onMove != null) {
-            IconButton(onClick = { onMove(item) }) {
-                Icon(Icons.Default.Folder, contentDescription = "Pindah", modifier = Modifier.size(18.dp))
+        Box {
+            IconButton(onClick = { showMenu = true }) {
+                Icon(Icons.Default.MoreVert, contentDescription = "Lainnya", modifier = Modifier.size(18.dp))
             }
-        }
-        if (onDelete != null) {
-            IconButton(onClick = { onDelete(item) }) {
-                Icon(Icons.Default.Delete, contentDescription = "Hapus", modifier = Modifier.size(18.dp))
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text("Pindahkan file ini") },
+                    onClick = {
+                        showMenu = false
+                        moveLauncher.launch(null)
+                    },
+                    leadingIcon = { Icon(Icons.Default.Folder, null) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Hapus file") },
+                    onClick = {
+                        showMenu = false
+                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                            com.sortit.ui.RealFileOpsHolder.ops.moveToTrash(item.path)
+                        }
+                    },
+                    leadingIcon = { Icon(Icons.Default.Delete, null) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Buka di file manager") },
+                    onClick = {
+                        showMenu = false
+                        openPathInFileManager(context, item.path)
+                    },
+                    leadingIcon = { Icon(Icons.Default.OpenInNew, null) }
+                )
             }
         }
     }

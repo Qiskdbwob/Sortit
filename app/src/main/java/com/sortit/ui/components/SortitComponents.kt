@@ -30,10 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.sortit.util.truncateFileName
 import java.io.File
 import java.text.SimpleDateFormat
@@ -143,7 +145,10 @@ fun MediaThumb(name: String, path: String, mimeType: String?, isMedia: Boolean, 
     val shape = RoundedCornerShape(16.dp)
     if (isMedia) {
         SubcomposeAsyncImage(
-            model = File(path),
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(File(path))
+                .crossfade(true)
+                .build(),
             contentDescription = name,
             modifier = modifier.clip(shape),
             contentScale = ContentScale.Crop,

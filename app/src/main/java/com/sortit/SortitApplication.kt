@@ -24,6 +24,7 @@ class SortitApplication : Application() {
         prefs = Prefs(this)
         CoroutineScope(Dispatchers.IO).launch {
             SeedUseCase(db).seedIfEmpty(prefs)
+            fileOps.cleanupOldTrash(14)
         }
     }
 }

@@ -13,7 +13,8 @@ interface FileOps {
     fun lastModified(path: String): Long
     fun mimeOf(file: File): String?
     fun move(src: String, dstDir: String): String?   // return dst path, null jika gagal
-    fun moveToTrash(src: String): String?            // pindah ke TRASH_ROOT, bukan hapus permanen
+    fun moveToTrash(src: String): String?            // pindah ke TRASH_ROOT ext-subfolder
+    fun cleanupOldTrash(maxAgeDays: Long = 14)
     fun restoreFromTrash(src: String, dstDir: String): String?  // pulihkan dari trash
     fun mkdirs(dir: String): Boolean
     fun isReadableDir(path: String): Boolean
@@ -66,8 +67,19 @@ class RealFileOps : FileOps {
     }
 
     override fun moveToTrash(src: String): String? {
-        mkdirs(FileOps.TRASH_ROOT)
-        return move(src, FileOps.TRASH_ROOT)
+        val ext = File(src).extension.lowercase()
+        val trashDir = if (ext.isNotEmpty()) "$TRASH_ROOT/$ext" else TRASH_ROOT
+        mkdirs(trashDir)
+        return move(src, trashDir)
+    }
+
+    override fun cleanupOldTrash(maxAgeDays: Long) {
+        val trashDir = File(TRASH_ROOT)
+        if (!trashDir.exists()) return
+        val cutoff = System.currentTimeMillis() - (maxAgeDays * 24 * 60 * 60 * 1000)
+        trashDir.walkTopDown().filter { it.isFile }.forEach { file ->
+            if (file.lastModified() < cutoff) file.delete()
+        }
     }
 
     override fun restoreFromTrash(src: String, dstDir: String): String? {

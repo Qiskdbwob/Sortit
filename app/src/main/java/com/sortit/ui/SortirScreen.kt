@@ -51,6 +51,7 @@ import com.sortit.ui.components.formatDate
 import com.sortit.ui.components.formatSize
 import androidx.compose.ui.platform.LocalContext
 import com.sortit.util.openPathInFileManager
+import com.sortit.util.truncateFileName
 
 @Composable
 fun ScanFlowScreen(state: ScanUiState, scanVm: ScanViewModel) {
@@ -193,7 +194,7 @@ private fun ScanItemRow(item: ScanItemEntity, templateName: String, onToggle: (B
             MediaThumb(item.name, item.path, item.mimeType, item.isMedia, Modifier.size(58.dp))
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(item.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(truncateFileName(item.name), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("$templateName • ${formatSize(item.size)} • ${formatDate(item.lastModified)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OneLinePath(item.path)
             }

@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -92,9 +93,18 @@ fun MainScreen(
     }
 
     val scanState by scanVm.state.collectAsState()
-    when (val s = scanState) {
-        is ScanUiState.Idle -> MainTabs(dashboardVm, templateVm, monitorVm, scanVm)
-        else -> ScanFlowScreen(state = s, scanVm = scanVm)
+    Box(Modifier.fillMaxSize()) {
+        MainTabs(dashboardVm, templateVm, monitorVm, scanVm)
+        when (val s = scanState) {
+            is ScanUiState.Scanning -> ScanFlowScreen(state = s, scanVm = scanVm)
+            is ScanUiState.Running -> ScanFlowScreen(state = s, scanVm = scanVm)
+            is ScanUiState.Preview -> ScanFlowScreen(state = s, scanVm = scanVm)
+            is ScanUiState.ExistingPending -> ScanFlowScreen(state = s, scanVm = scanVm)
+            is ScanUiState.Empty -> ScanFlowScreen(state = s, scanVm = scanVm)
+            is ScanUiState.Error -> ScanFlowScreen(state = s, scanVm = scanVm)
+            is ScanUiState.Done -> ScanFlowScreen(state = s, scanVm = scanVm)
+            ScanUiState.Idle -> { }
+        }
     }
 }
 
