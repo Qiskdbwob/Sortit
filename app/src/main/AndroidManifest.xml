@@ -17,6 +17,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Sortit"
         android:name=".SortitApplication"
+        android:requestLegacyExternalStorage="true"
         tools:targetApi="31">
         <activity
             android:name=".MainActivity"

@@ -12,13 +12,20 @@ interface FileOps {
     fun lastModified(path: String): Long
     fun mimeOf(file: File): String?
     fun move(src: String, dstDir: String): String?   // return dst path, null jika gagal
+    fun moveToTrash(src: String): String?            // pindah ke TRASH_ROOT, bukan hapus permanen
     fun mkdirs(dir: String): Boolean
+    fun isReadableDir(path: String): Boolean
+    fun childCount(path: String): Int
+
+    companion object {
+        const val TRASH_ROOT: String = "/storage/emulated/0/Sortit/.sortit-trash"
+    }
 }
 
 class RealFileOps : FileOps {
     override fun listFiles(dir: String): List<File> {
         val d = File(dir)
-        return if (d.isDirectory) d.listFiles()?.toList() ?: emptyList() else emptyList()
+        return if (d.isDirectory && d.canRead()) d.listFiles()?.toList() ?: emptyList() else emptyList()
     }
 
     override fun walkDeep(dir: String): Sequence<File> =
@@ -35,19 +42,29 @@ class RealFileOps : FileOps {
             name.endsWith(".png") -> "image/png"
             name.endsWith(".webp") -> "image/webp"
             name.endsWith(".gif") -> "image/gif"
-            name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".webm") -> "video/*"
-            name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".ogg") -> "audio/*"
+            name.endsWith(".mp4") -> "video/mp4"
+            name.endsWith(".mkv") -> "video/x-matroska"
+            name.endsWith(".webm") -> "video/webm"
+            name.endsWith(".mp3") -> "audio/mpeg"
+            name.endsWith(".wav") -> "audio/wav"
+            name.endsWith(".ogg") -> "audio/ogg"
             name.endsWith(".pdf") -> "application/pdf"
+            name.endsWith(".doc") || name.endsWith(".docx") -> "application/msword"
+            name.endsWith(".xls") || name.endsWith(".xlsx") -> "application/vnd.ms-excel"
+            name.endsWith(".ppt") || name.endsWith(".pptx") -> "application/vnd.ms-powerpoint"
             else -> null
         }
     }
 
     override fun move(src: String, dstDir: String): String? {
         val s = File(src)
-        if (!s.exists()) return null
+        if (!s.exists() || !s.isFile) return null
         val d = File(dstDir)
         if (!d.exists()) d.mkdirs()
+
         var target = File(d, s.name)
+        if (s.absolutePath == target.absolutePath) return target.absolutePath
+
         // konflik nama -> rename name(1).ext
         var i = 1
         while (target.exists()) {
@@ -57,8 +74,37 @@ class RealFileOps : FileOps {
             target = File(d, "${base}($i)$ext")
             i++
         }
-        return if (s.renameTo(target)) target.absolutePath else null
+
+        if (s.renameTo(target)) return target.absolutePath
+        return copyThenDelete(s, target)
     }
 
-    override fun mkdirs(dir: String): Boolean = File(dir).mkdirs()
+    override fun moveToTrash(src: String): String? {
+        mkdirs(FileOps.TRASH_ROOT)
+        return move(src, FileOps.TRASH_ROOT)
+    }
+
+    override fun mkdirs(dir: String): Boolean = File(dir).mkdirs() || File(dir).isDirectory
+
+    override fun isReadableDir(path: String): Boolean {
+        val d = File(path)
+        return d.exists() && d.isDirectory && d.canRead()
+    }
+
+    override fun childCount(path: String): Int = listFiles(path).size
+
+    private fun copyThenDelete(src: File, dst: File): String? {
+        return try {
+            dst.parentFile?.mkdirs()
+            src.inputStream().use { input ->
+                dst.outputStream().use { output -> input.copyTo(output) }
+            }
+            if (src.length() == dst.length() && src.delete()) dst.absolutePath else {
+                if (dst.exists() && src.exists()) dst.delete()
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
 }

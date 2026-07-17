@@ -20,12 +20,15 @@ class FakeFileOps(private val files: List<File>) : FileOps {
         moved.add(src to dstDir)
         return "$dstDir/${File(src).name}"
     }
+    override fun moveToTrash(src: String): String? = move(src, FileOps.TRASH_ROOT)
     override fun mkdirs(dir: String): Boolean = true
+    override fun isReadableDir(path: String): Boolean = true
+    override fun childCount(path: String): Int = files.count { it.absolutePath == path || it.absolutePath.startsWith("$path/") }
 }
 
 class ScanSortUseCaseTest {
-    private fun tpl(mode: String, dirs: String? = null) = TemplateEntity(
-        name = "t", extensions = "txt,bak", targetTreeUri = "/out",
+    private fun tpl(mode: String, dirs: String? = null, name: String = "t") = TemplateEntity(
+        name = name, extensions = "txt,bak", targetTreeUri = "/out",
         sourceMode = mode, sourceDirs = dirs
     )
 
@@ -60,5 +63,21 @@ class ScanSortUseCaseTest {
         var found = 0
         prog.collect { found = it.found }
         assertEquals(1, found) // /system dikecualikan
+    }
+
+    @Test
+    fun `multi rule scan dedupes same file and keeps template id`() = runBlocking {
+        val files = listOf(File("/a/x.txt"), File("/a/x.txt"), File("/a/y.bak"))
+        val ops = FakeFileOps(files)
+        val use = ScanSortUseCase(ops)
+        val candidates = mutableListOf<Pair<Long, FileItem>>()
+        val prog = use.executeMany(listOf(tpl("FOLDERS", "/a", "one"), tpl("FOLDERS", "/a", "two")), emptySet()) { templateId, item ->
+            candidates.add(templateId to item)
+        }
+        var found = 0
+        prog.collect { found = it.found }
+        assertEquals(2, found)
+        assertEquals(2, candidates.size)
+        assertEquals(setOf("/a/x.txt", "/a/y.bak"), candidates.map { it.second.path }.toSet())
     }
 }
