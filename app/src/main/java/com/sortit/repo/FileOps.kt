@@ -68,13 +68,13 @@ class RealFileOps : FileOps {
 
     override fun moveToTrash(src: String): String? {
         val ext = File(src).extension.lowercase()
-        val trashDir = if (ext.isNotEmpty()) "$TRASH_ROOT/$ext" else TRASH_ROOT
+        val trashDir = if (ext.isNotEmpty()) "${FileOps.TRASH_ROOT}/$ext" else FileOps.TRASH_ROOT
         mkdirs(trashDir)
         return move(src, trashDir)
     }
 
     override fun cleanupOldTrash(maxAgeDays: Long) {
-        val trashDir = File(TRASH_ROOT)
+        val trashDir = File(FileOps.TRASH_ROOT)
         if (!trashDir.exists()) return
         val cutoff = System.currentTimeMillis() - (maxAgeDays * 24 * 60 * 60 * 1000)
         trashDir.walkTopDown().filter { it.isFile }.forEach { file ->
