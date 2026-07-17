@@ -185,6 +185,7 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun ScanItemRow(item: ScanItemEntity, templateName: String, onToggle: (Boolean) -> Unit) {
     val context = LocalContext.current
     Card(Modifier.fillMaxWidth(), onClick = { openPathInFileManager(context, item.path) }) {
