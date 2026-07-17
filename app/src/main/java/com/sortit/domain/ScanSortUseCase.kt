@@ -58,7 +58,7 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                     seq.forEach { f ->
                         scanned++
                         val path = f.absolutePath
-                        val matches = f.exists() &&
+                        val matches = fileOps.exists(path) &&
                                 !SystemExcludes.isSystemPath(path) &&
                                 matchesExtension(f.name, exts) &&
                                 !isExcluded(path, f.name, excludePatterns) &&
