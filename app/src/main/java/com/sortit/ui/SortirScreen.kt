@@ -1,5 +1,6 @@
 package com.sortit.ui
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -110,6 +111,7 @@ private fun ScanningScreen(state: ScanUiState.Scanning) {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel) {
     val pending = state.items.count { it.status == "PENDING" }
     val excluded = state.items.count { it.status == "EXCLUDED" }
@@ -198,6 +200,7 @@ private fun ScanItemRow(item: ScanItemEntity, templateName: String, onToggle: (B
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun RunningScreen(state: ScanUiState.Running) {
     val progress = if (state.total == 0) 0f else (state.done + state.failed).toFloat() / state.total.toFloat()
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {

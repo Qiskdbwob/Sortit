@@ -1,5 +1,6 @@
 package com.sortit.ui
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -125,6 +126,7 @@ private fun PermissionGate(legacy: Boolean, onGrant: () -> Unit) {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun MainTabs(
     dashboardVm: DashboardViewModel,
     templateVm: TemplateViewModel,
