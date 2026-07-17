@@ -20,7 +20,6 @@ class SortitApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         db = Room.databaseBuilder(this, AppDatabase::class.java, "sortit.db")
-            .fallbackToDestructiveMigration()
             .build()
         prefs = Prefs(this)
         CoroutineScope(Dispatchers.IO).launch {

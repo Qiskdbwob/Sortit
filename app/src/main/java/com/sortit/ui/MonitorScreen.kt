@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -36,6 +37,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -54,10 +56,13 @@ import com.sortit.ui.components.MediaThumb
 import com.sortit.ui.components.OneLinePath
 import com.sortit.ui.components.StatusBadge
 import com.sortit.ui.components.formatSize
+import com.sortit.util.openPathInFileManager
 import com.sortit.util.StoragePaths
 import com.sortit.util.SystemExcludes
+import com.sortit.util.truncateFileName
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -149,13 +154,27 @@ private fun MonitorCard(m: MonitorEntity, onToggle: (Boolean) -> Unit, onDelete:
 }
 
 @Composable
-private fun MonitorFileRow(item: FileItem) {
+private fun MonitorFileRow(item: FileItem, onMove: ((FileItem) -> Unit)? = null, onDelete: ((FileItem) -> Unit)? = null) {
+    val context = LocalContext.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         MediaThumb(item.name, item.path, item.mimeType, item.isMedia, Modifier.size(44.dp))
         Spacer(Modifier.size(10.dp))
         Column(Modifier.weight(1f)) {
-            Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+            Text(truncateFileName(item.name), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
             Text(formatSize(item.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        IconButton(onClick = { openPathInFileManager(context, item.path) }) {
+            Icon(Icons.Default.OpenInNew, contentDescription = "Buka", modifier = Modifier.size(18.dp))
+        }
+        if (onMove != null) {
+            IconButton(onClick = { onMove(item) }) {
+                Icon(Icons.Default.Folder, contentDescription = "Pindah", modifier = Modifier.size(18.dp))
+            }
+        }
+        if (onDelete != null) {
+            IconButton(onClick = { onDelete(item) }) {
+                Icon(Icons.Default.Delete, contentDescription = "Hapus", modifier = Modifier.size(18.dp))
+            }
         }
     }
 }
@@ -243,7 +262,12 @@ private fun rememberFileObserverTick(path: String, enabled: Boolean): Int {
 @Composable
 private fun rememberPathInspection(path: String, enabled: Boolean, tick: Int): ScanPathUseCase.PathInspection? {
     val scan = remember { ScanPathUseCase(RealFileOpsHolder.ops) }
-    val state = produceState<ScanPathUseCase.PathInspection?>(initialValue = null, path, enabled, tick) {
+    var debouncedTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(tick) {
+        delay(500)
+        debouncedTick = tick
+    }
+    val state = produceState<ScanPathUseCase.PathInspection?>(initialValue = null, path, enabled, debouncedTick) {
         value = withContext(Dispatchers.IO) {
             if (!enabled) null else scan.inspect(path)
         }

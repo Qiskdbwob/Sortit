@@ -24,4 +24,9 @@ interface SortLogDao {
 
     @Query("SELECT COUNT(*) FROM sort_logs WHERE status = 'FAIL'")
     fun observeFailedCount(): Flow<Int>
+    @Query("SELECT * FROM sort_logs WHERE dstPath LIKE '%' || :trashRoot || '%' ORDER BY timestamp DESC LIMIT :limit")
+    suspend fun trashedFiles(trashRoot: String, limit: Int = 100): List<SortLogEntity>
+
+    @Query("UPDATE sort_logs SET status = 'RESTORED' WHERE id = :logId")
+    suspend fun markRestored(logId: Long)
 }

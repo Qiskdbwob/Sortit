@@ -13,10 +13,16 @@ import kotlinx.coroutines.flow.flow
 // Emit progress bertahap (chunked) supaya UI tidak freeze.
 class ScanSortUseCase(private val fileOps: FileOps) {
 
+    data class ScannedFile(
+        val templateId: Long,
+        val item: FileItem
+    )
+
     data class Progress(
         val scanned: Int,
         val found: Int,
-        val currentPath: String
+        val currentPath: String,
+        val errors: List<String> = emptyList()
     )
 
     fun execute(
@@ -32,6 +38,7 @@ class ScanSortUseCase(private val fileOps: FileOps) {
     ): Flow<Progress> = flow {
         var scanned = 0
         var found = 0
+        val errors = mutableListOf<String>()
         val seen = mutableSetOf<String>()
         for (template in templates.filter { it.enabled }) {
             val exts = parseExtensions(template.extensions)
@@ -51,7 +58,8 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                     seq.forEach { f ->
                         scanned++
                         val path = f.absolutePath
-                        val matches = !SystemExcludes.isSystemPath(path) &&
+                        val matches = f.exists() &&
+                                !SystemExcludes.isSystemPath(path) &&
                                 matchesExtension(f.name, exts) &&
                                 !isExcluded(path, f.name, excludePatterns) &&
                                 seen.add(path)
@@ -74,12 +82,12 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                             emit(Progress(scanned, found, path))
                         }
                     }
-                } catch (_: Exception) {
-                    // Folder hilang/permission berubah di tengah scan: lanjut root berikutnya.
+                } catch (e: Exception) {
+                    errors.add("Gagal scan $root: ${e.message ?: "unknown error"}")
                 }
             }
         }
-        emit(Progress(scanned, found, ""))
+        emit(Progress(scanned, found, "", errors.toList()))
     }
 
     private fun isExcluded(path: String, name: String, patterns: Set<String>): Boolean =

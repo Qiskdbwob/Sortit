@@ -48,12 +48,14 @@ import com.sortit.ui.components.SectionCard
 import com.sortit.ui.components.StatusBadge
 import com.sortit.ui.components.formatDate
 import com.sortit.ui.components.formatSize
+import androidx.compose.ui.platform.LocalContext
+import com.sortit.util.openPathInFileManager
 
 @Composable
 fun ScanFlowScreen(state: ScanUiState, scanVm: ScanViewModel) {
     when (state) {
         is ScanUiState.ExistingPending -> ExistingPendingDialog(state, scanVm)
-        is ScanUiState.Scanning -> ScanningScreen(state)
+        is ScanUiState.Scanning -> ScanningScreen(state) { scanVm.reset() }
         is ScanUiState.Empty -> MessageScreen(
             icon = Icons.Default.Search,
             title = "Tidak ada hasil",
@@ -69,7 +71,7 @@ fun ScanFlowScreen(state: ScanUiState, scanVm: ScanViewModel) {
             onAction = { scanVm.reset() }
         )
         is ScanUiState.Preview -> ScanPreviewScreen(state, scanVm)
-        is ScanUiState.Running -> RunningScreen(state)
+        is ScanUiState.Running -> RunningScreen(state) { scanVm.reset() }
         is ScanUiState.Done -> DoneScreen(state) { scanVm.reset() }
         ScanUiState.Idle -> Unit
     }
@@ -97,17 +99,19 @@ private fun ExistingPendingDialog(state: ScanUiState.ExistingPending, scanVm: Sc
 }
 
 @Composable
-private fun ScanningScreen(state: ScanUiState.Scanning) {
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Text("Scanning...", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-            Spacer(Modifier.height(14.dp))
-            LinearProgressIndicator(Modifier.fillMaxWidth())
-            Spacer(Modifier.height(14.dp))
-            Text("${state.scanned} file dicek • ${state.found} cocok", fontWeight = FontWeight.SemiBold)
-            if (state.current.isNotBlank()) OneLinePath(state.current, Modifier.padding(top = 6.dp))
-        }
-    }
+private fun ScanningScreen(state: ScanUiState.Scanning, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = { /* tidak bisa di-dismiss saat scan */ },
+        title = { Text("Scanning...", fontWeight = FontWeight.ExtraBold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text("${state.scanned} file dicek • ${state.found} cocok", fontWeight = FontWeight.SemiBold)
+                if (state.current.isNotBlank()) OneLinePath(state.current)
+            }
+        },
+        confirmButton = { }
+    )
 }
 
 @Composable
@@ -182,7 +186,8 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
 
 @Composable
 private fun ScanItemRow(item: ScanItemEntity, templateName: String, onToggle: (Boolean) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    val context = LocalContext.current
+    Card(Modifier.fillMaxWidth(), onClick = { openPathInFileManager(context, item.path) }) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             MediaThumb(item.name, item.path, item.mimeType, item.isMedia, Modifier.size(58.dp))
             Spacer(Modifier.size(12.dp))
@@ -200,19 +205,20 @@ private fun ScanItemRow(item: ScanItemEntity, templateName: String, onToggle: (B
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun RunningScreen(state: ScanUiState.Running) {
+private fun RunningScreen(state: ScanUiState.Running, onDismiss: () -> Unit) {
     val progress = if (state.total == 0) 0f else (state.done + state.failed).toFloat() / state.total.toFloat()
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Text(if (state.action == SortFilesUseCase.Action.TRASH) "Memindah ke trash..." else "Memindahkan file...", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-            Spacer(Modifier.height(14.dp))
-            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(14.dp))
-            Text("${state.done + state.failed}/${state.total} • gagal ${state.failed}", fontWeight = FontWeight.SemiBold)
-            if (state.current.isNotBlank()) OneLinePath(state.current, Modifier.padding(top = 6.dp))
-        }
-    }
+    AlertDialog(
+        onDismissRequest = { /* tidak bisa di-dismiss saat running */ },
+        title = { Text(if (state.action == SortFilesUseCase.Action.TRASH) "Memindah ke trash..." else "Memindahkan file...", fontWeight = FontWeight.ExtraBold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+                Text("${state.done + state.failed}/${state.total} • gagal ${state.failed}", fontWeight = FontWeight.SemiBold)
+                if (state.current.isNotBlank()) OneLinePath(state.current)
+            }
+        },
+        confirmButton = { }
+    )
 }
 
 @Composable

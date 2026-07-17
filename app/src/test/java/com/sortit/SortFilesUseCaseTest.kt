@@ -29,6 +29,7 @@ private fun ops(moveResult: (String, String) -> String?): FileOps = object : Fil
     override fun mimeOf(file: File): String? = null
     override fun move(src: String, dstDir: String): String? = moveResult(src, dstDir)
     override fun moveToTrash(src: String): String? = moveResult(src, FileOps.TRASH_ROOT)
+    override fun restoreFromTrash(src: String, dstDir: String): String? = moveResult(src, dstDir)
     override fun mkdirs(dir: String): Boolean = true
     override fun isReadableDir(path: String): Boolean = true
     override fun childCount(path: String): Int = 0

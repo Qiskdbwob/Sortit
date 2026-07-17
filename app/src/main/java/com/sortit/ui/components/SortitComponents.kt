@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
+import com.sortit.util.truncateFileName
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -167,5 +168,16 @@ fun OneLinePath(path: String, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
+fun TruncatedFileName(name: String, modifier: Modifier = Modifier, fontWeight: FontWeight = FontWeight.Normal) {
+    Text(
+        truncateFileName(name),
+        modifier = modifier,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        fontWeight = fontWeight
     )
 }

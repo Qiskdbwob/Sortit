@@ -1,5 +1,6 @@
 package com.sortit.repo
 
+import android.webkit.MimeTypeMap
 import java.io.File
 
 // Abstraksi akses storage via all-files (MANAGE_EXTERNAL_STORAGE).
@@ -13,6 +14,7 @@ interface FileOps {
     fun mimeOf(file: File): String?
     fun move(src: String, dstDir: String): String?   // return dst path, null jika gagal
     fun moveToTrash(src: String): String?            // pindah ke TRASH_ROOT, bukan hapus permanen
+    fun restoreFromTrash(src: String, dstDir: String): String?  // pulihkan dari trash
     fun mkdirs(dir: String): Boolean
     fun isReadableDir(path: String): Boolean
     fun childCount(path: String): Int
@@ -36,24 +38,8 @@ class RealFileOps : FileOps {
     override fun lastModified(path: String): Long = File(path).lastModified()
 
     override fun mimeOf(file: File): String? {
-        val name = file.name.lowercase()
-        return when {
-            name.endsWith(".jpg") || name.endsWith(".jpeg") -> "image/jpeg"
-            name.endsWith(".png") -> "image/png"
-            name.endsWith(".webp") -> "image/webp"
-            name.endsWith(".gif") -> "image/gif"
-            name.endsWith(".mp4") -> "video/mp4"
-            name.endsWith(".mkv") -> "video/x-matroska"
-            name.endsWith(".webm") -> "video/webm"
-            name.endsWith(".mp3") -> "audio/mpeg"
-            name.endsWith(".wav") -> "audio/wav"
-            name.endsWith(".ogg") -> "audio/ogg"
-            name.endsWith(".pdf") -> "application/pdf"
-            name.endsWith(".doc") || name.endsWith(".docx") -> "application/msword"
-            name.endsWith(".xls") || name.endsWith(".xlsx") -> "application/vnd.ms-excel"
-            name.endsWith(".ppt") || name.endsWith(".pptx") -> "application/vnd.ms-powerpoint"
-            else -> null
-        }
+        val ext = file.extension.lowercase()
+        return if (ext.isNotEmpty()) MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) else null
     }
 
     override fun move(src: String, dstDir: String): String? {
@@ -82,6 +68,10 @@ class RealFileOps : FileOps {
     override fun moveToTrash(src: String): String? {
         mkdirs(FileOps.TRASH_ROOT)
         return move(src, FileOps.TRASH_ROOT)
+    }
+
+    override fun restoreFromTrash(src: String, dstDir: String): String? {
+        return move(src, dstDir)
     }
 
     override fun mkdirs(dir: String): Boolean = File(dir).mkdirs() || File(dir).isDirectory

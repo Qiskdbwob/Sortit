@@ -6,7 +6,6 @@ import com.sortit.data.ScanItemEntity
 import com.sortit.data.ScanSessionEntity
 import com.sortit.data.TemplateEntity
 import com.sortit.domain.FileItem
-import com.sortit.domain.PreviewSortUseCase
 import com.sortit.domain.ScanSortUseCase
 import com.sortit.domain.SortFilesUseCase
 import com.sortit.repo.ExcludeRepository
@@ -157,10 +156,10 @@ class ScanViewModel(
 
     private suspend fun startScan(templates: List<TemplateEntity>) {
         val excludes = templates.flatMap { excludeRepo.patternsFor(it.id) }.distinct()
-        val candidates = mutableListOf<PreviewSortUseCase.ScannedFile>()
+        val candidates = mutableListOf<ScanSortUseCase.ScannedFile>()
         _state.value = ScanUiState.Scanning(0, 0, "")
         scan.executeMany(templates, excludes.toSet()) { templateId, item ->
-            candidates.add(PreviewSortUseCase.ScannedFile(templateId, item))
+            candidates.add(ScanSortUseCase.ScannedFile(templateId, item))
         }.collect { p ->
             _state.value = ScanUiState.Scanning(p.scanned, p.found, p.currentPath)
         }

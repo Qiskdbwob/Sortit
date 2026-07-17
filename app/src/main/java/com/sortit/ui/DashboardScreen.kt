@@ -15,10 +15,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -27,8 +30,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sortit.data.MonitorEntity
@@ -40,7 +45,10 @@ import com.sortit.ui.components.OneLinePath
 import com.sortit.ui.components.SectionCard
 import com.sortit.ui.components.StatusBadge
 import com.sortit.ui.components.formatDate
+import com.sortit.util.openPathInFileManager
+import com.sortit.util.truncateFileName
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -56,6 +64,7 @@ fun DashboardScreen(
     val pending by vm.pendingScanCount.collectAsState()
     val active by vm.activeScan.collectAsState()
     val recent by vm.recentLogs.collectAsState()
+    val trashed by vm.trashedFiles.collectAsState()
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -140,6 +149,39 @@ fun DashboardScreen(
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         recent.forEach { LogRow(it) }
+                    }
+                }
+            }
+        }
+
+        item {
+            SectionCard(title = "Restore dari Trash", subtitle = "Kembalikan file yang sudah di-trash ke lokasi asal.") {
+                if (trashed.isEmpty()) {
+                    Text("Tidak ada file di trash.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    val scope = rememberCoroutineScope()
+                    val context = LocalContext.current
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        trashed.forEach { log ->
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                StatusBadge("TRASH", ok = false)
+                                Spacer(Modifier.size(10.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(truncateFileName(log.fileName), fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                    OneLinePath(log.dstPath)
+                                }
+                                IconButton(onClick = { openPathInFileManager(context, log.dstPath) }) {
+                                    Icon(Icons.Default.OpenInNew, contentDescription = "Buka", modifier = Modifier.size(18.dp))
+                                }
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        vm.restoreFile(log, RealFileOpsHolder.ops)
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Restore, contentDescription = "Restore", modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -18,7 +18,8 @@ class SortFilesUseCase(
         val total: Int,
         val done: Int,
         val failed: Int,
-        val currentPath: String
+        val currentPath: String,
+        val errors: List<String> = emptyList()
     )
 
     fun execute(
@@ -30,6 +31,7 @@ class SortFilesUseCase(
     ): Flow<Progress> = flow {
         var done = 0
         var failed = 0
+        val errors = mutableListOf<String>()
         if (action == Action.MOVE) fileOps.mkdirs(targetDir) else fileOps.mkdirs(FileOps.TRASH_ROOT)
 
         for (item in items) {
@@ -52,6 +54,7 @@ class SortFilesUseCase(
                 onItemResult(item.path, dst, "OK")
             } else {
                 failed++
+                errors.add("Gagal memindah: ${item.name}")
                 logDao.insert(
                     com.sortit.data.SortLogEntity(
                         templateId = templateId,
@@ -64,7 +67,7 @@ class SortFilesUseCase(
                 )
                 onItemResult(item.path, null, "FAIL")
             }
-            emit(Progress(items.size, done, failed, item.path))
+            emit(Progress(items.size, done, failed, item.path, errors.toList()))
         }
     }
 }
