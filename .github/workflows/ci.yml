@@ -2,9 +2,9 @@ name: CI
 # CI ketat: build + lint + unit test. Hanya kalau hijau, CD dijalankan.
 on:
   push:
-    branches: [main, master, dev]
+    branches: [main, master, dev, sortit-v2]
   pull_request:
-    branches: [main, master, dev]
+    branches: [main, master, dev, sortit-v2]
 
 jobs:
   build-and-test:
