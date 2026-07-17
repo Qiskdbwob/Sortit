@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -185,11 +186,10 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun ScanItemRow(item: ScanItemEntity, templateName: String, onToggle: (Boolean) -> Unit) {
     val context = LocalContext.current
-    Card(Modifier.fillMaxWidth(), onClick = { openPathInFileManager(context, item.path) }) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Card(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(12.dp).clickable { openPathInFileManager(context, item.path) }, verticalAlignment = Alignment.CenterVertically) {
             MediaThumb(item.name, item.path, item.mimeType, item.isMedia, Modifier.size(58.dp))
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
