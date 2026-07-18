@@ -18,8 +18,7 @@ class FakeLogDao : SortLogDao {
     override fun observeMovedCount(): Flow<Int> = flowOf(rows.count { it.status == "OK" && !it.dstPath.contains("/.sortit-trash/") })
     override fun observeTrashedCount(): Flow<Int> = flowOf(rows.count { it.status == "OK" && it.dstPath.contains("/.sortit-trash/") })
     override fun observeFailedCount(): Flow<Int> = flowOf(rows.count { it.status == "FAIL" })
-    override suspend fun trashedFiles(trashRoot: String, limit: Int): List<SortLogEntity> = emptyList()
-    override suspend fun markRestored(logId: Long) { }
+    override suspend fun deleteOlderThan(cutoff: Long) { }
 }
 
 private fun ops(moveResult: (String, String) -> String?): FileOps = object : FileOps {
@@ -31,8 +30,6 @@ private fun ops(moveResult: (String, String) -> String?): FileOps = object : Fil
     override fun mimeOf(file: File): String? = null
     override fun move(src: String, dstDir: String): String? = moveResult(src, dstDir)
     override fun moveToTrash(src: String): String? = moveResult(src, FileOps.TRASH_ROOT)
-    override fun restoreFromTrash(src: String, dstDir: String): String? = moveResult(src, dstDir)
-    override fun cleanupOldTrash(maxAgeDays: Long) { }
     override fun mkdirs(dir: String): Boolean = true
     override fun isReadableDir(path: String): Boolean = true
     override fun childCount(path: String): Int = 0

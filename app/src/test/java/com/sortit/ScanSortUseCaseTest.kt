@@ -7,7 +7,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 
-// Fake FileOps yang tidak menyentuh disk sungguhan.
 class FakeFileOps(private val files: List<File>) : FileOps {
     val moved = mutableListOf<Pair<String, String>>()
     override fun listFiles(dir: String): List<File> = files
@@ -21,8 +20,6 @@ class FakeFileOps(private val files: List<File>) : FileOps {
         return "$dstDir/${File(src).name}"
     }
     override fun moveToTrash(src: String): String? = move(src, FileOps.TRASH_ROOT)
-    override fun restoreFromTrash(src: String, dstDir: String): String? = move(src, dstDir)
-    override fun cleanupOldTrash(maxAgeDays: Long) { }
     override fun mkdirs(dir: String): Boolean = true
     override fun isReadableDir(path: String): Boolean = true
     override fun childCount(path: String): Int = files.count { it.absolutePath == path || it.absolutePath.startsWith("$path/") }
@@ -42,7 +39,7 @@ class ScanSortUseCaseTest {
         val prog = use.execute(tpl("FOLDERS", "/a"), emptySet())
         var found = 0
         prog.collect { found = it.found }
-        assertEquals(2, found) // /a/x.txt + /a/z.bak, bukan /b/y.txt
+        assertEquals(2, found)
     }
 
     @Test
@@ -64,7 +61,7 @@ class ScanSortUseCaseTest {
         val prog = use.execute(tpl("ALL"), emptySet())
         var found = 0
         prog.collect { found = it.found }
-        assertEquals(1, found) // /system dikecualikan
+        assertEquals(1, found)
     }
 
     @Test
