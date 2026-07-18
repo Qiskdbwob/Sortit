@@ -1,0 +1,43 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Geometric S letter — main element, stroked path -->
+    <path
+        android:pathData="M 24,16 L 60,16 C 74,16 74,34 56,34 L 40,34 C 24,34 24,52 40,52 L 64,52"
+        android:strokeColor="#6D5BD0"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Open folder — back body + tab (lighter shade) -->
+    <path
+        android:pathData="M 48,66 L 58,66 L 62,74 L 80,74 L 80,84 L 48,84 Z"
+        android:fillColor="#FFB74D"/>
+
+    <!-- Open folder — front panel (depth effect, darker shade) -->
+    <path
+        android:pathData="M 48,78 L 80,78 L 80,84 L 48,84 Z"
+        android:fillColor="#FFA726"/>
+
+    <!-- Curved arrow shaft — sorting/move indicator -->
+    <path
+        android:pathData="M 78,74 C 84,74 88,68 86,62"
+        android:strokeColor="#FF8F00"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Arrowhead -->
+    <path
+        android:pathData="M 82,60 L 86,62 L 82,66"
+        android:strokeColor="#FF8F00"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"/>
+
+</vector>

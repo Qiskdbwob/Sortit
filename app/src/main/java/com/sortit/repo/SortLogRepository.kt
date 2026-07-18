@@ -24,9 +24,4 @@ class SortLogRepository(private val db: AppDatabase) {
     ) { moved, trashed, failed ->
         SortCounts(moved = moved, trashed = trashed, failed = failed)
     }
-
-    suspend fun getTrashedFiles(limit: Int = 100): List<SortLogEntity> =
-        db.sortLogDao().trashedFiles(com.sortit.repo.FileOps.TRASH_ROOT, limit)
-
-    suspend fun markRestored(logId: Long) = db.sortLogDao().markRestored(logId)
 }

@@ -3,8 +3,6 @@ package com.sortit.domain
 import com.sortit.data.TemplateEntity
 import com.sortit.repo.FileOps
 import com.sortit.util.SystemExcludes
-import com.sortit.util.matchesExtension
-import com.sortit.util.parseExtensions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -16,12 +14,6 @@ class ScanSortUseCase(private val fileOps: FileOps) {
         val scanned: Int,
         val found: Int,
         val currentPath: String
-    )
-
-    // Wrapper untuk kandidat scan — dipakai oleh SortRunViewModel
-    data class ScannedFile(
-        val templateId: Long,
-        val item: FileItem
     )
 
     fun execute(
@@ -40,7 +32,7 @@ class ScanSortUseCase(private val fileOps: FileOps) {
         val seen = mutableSetOf<String>()
 
         for (template in templates.filter { it.enabled }) {
-            val exts = parseExtensions(template.extensions)
+            val exts = com.sortit.util.parseExtensions(template.extensions)
             if (exts.isEmpty()) continue
 
             for (root in FileScanner.resolveRoots(template)) {
@@ -51,7 +43,7 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                         scanned++
                         val path = f.absolutePath
                         val matches = !SystemExcludes.isSystemPath(path) &&
-                                matchesExtension(f.name, exts) &&
+                                com.sortit.util.matchesExtension(f.name, exts) &&
                                 !isExcluded(path, f.name, excludePatterns) &&
                                 seen.add(path)
                         if (matches) {
