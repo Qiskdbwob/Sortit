@@ -1,18 +1,18 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp") version "1.9.24-1.0.20"
 }
 
-// Load keystore config dari local.properties (tidak di-commit)
-val localProps = project.rootProject.file("local.properties")
-if (localProps.exists()) {
-    val props = java.util.Properties().apply { load(localProps.inputStream()) }
-    project.extra["RELEASE_STORE_FILE"] = props.getProperty("RELEASE_STORE_FILE", "")
-    project.extra["RELEASE_STORE_PASSWORD"] = props.getProperty("RELEASE_STORE_PASSWORD", "")
-    project.extra["RELEASE_KEY_ALIAS"] = props.getProperty("RELEASE_KEY_ALIAS", "")
-    project.extra["RELEASE_KEY_PASSWORD"] = props.getProperty("RELEASE_KEY_PASSWORD", "")
+// Helper: baca local.properties kalau ada
+fun readLocalProps(): Properties? {
+    val f = rootProject.file("local.properties")
+    return if (f.exists()) Properties().apply { load(FileInputStream(f)) } else null
 }
+val localProps = readLocalProps()
 
 android {
     namespace = "com.sortit"
@@ -28,13 +28,12 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            val storeFile = project.extra["RELEASE_STORE_FILE"] as? String ?: ""
-            if (storeFile.isNotEmpty()) {
-                storeFile(file(storeFile))
-                storePassword(project.extra["RELEASE_STORE_PASSWORD"] as? String ?: "")
-                keyAlias(project.extra["RELEASE_KEY_ALIAS"] as? String ?: "")
-                keyPassword(project.extra["RELEASE_KEY_PASSWORD"] as? String ?: "")
+        if (localProps != null && localProps.getProperty("RELEASE_STORE_FILE", "").isNotEmpty()) {
+            create("release") {
+                storeFile = file(localProps.getProperty("RELEASE_STORE_FILE"))
+                storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD", "")
+                keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS", "")
+                keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD", "")
             }
         }
     }
@@ -47,11 +46,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            val releaseStoreFile = project.extra["RELEASE_STORE_FILE"] as? String ?: ""
-            signingConfig = if (releaseStoreFile.isNotEmpty()) {
+            signingConfig = if (localProps != null && localProps.getProperty("RELEASE_STORE_FILE", "").isNotEmpty()) {
                 signingConfigs.getByName("release")
             } else {
-                // Fallback ke debug signing kalau tidak ada keystore release
                 signingConfigs.getByName("debug")
             }
         }
