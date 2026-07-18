@@ -1,8 +1,18 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp") version "1.9.24-1.0.20"
 }
+
+// Helper: baca local.properties kalau ada
+fun readLocalProps(): Properties? {
+    val f = rootProject.file("local.properties")
+    return if (f.exists()) Properties().apply { load(FileInputStream(f)) } else null
+}
+val localProps = readLocalProps()
 
 android {
     namespace = "com.sortit"
@@ -18,15 +28,12 @@ android {
     }
 
     signingConfigs {
-        val localProps = rootProject.file("local.properties")
-        if (localProps.exists()) {
+        if (localProps != null && localProps.getProperty("RELEASE_STORE_FILE", "").isNotEmpty()) {
             create("release") {
-                val props = java.util.Properties()
-                props.load(localProps.inputStream())
-                storeFile = file(props.getProperty("RELEASE_STORE_FILE", ""))
-                storePassword = props.getProperty("RELEASE_STORE_PASSWORD", "")
-                keyAlias = props.getProperty("RELEASE_KEY_ALIAS", "")
-                keyPassword = props.getProperty("RELEASE_KEY_PASSWORD", "")
+                storeFile = file(localProps.getProperty("RELEASE_STORE_FILE"))
+                storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD", "")
+                keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS", "")
+                keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD", "")
             }
         }
     }
@@ -39,15 +46,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Fallback ke debug signing kalau tidak ada keystore release
-            signingConfig = if (rootProject.file("local.properties").exists()) {
-                val props = java.util.Properties()
-                props.load(rootProject.file("local.properties").inputStream())
-                if (props.getProperty("RELEASE_STORE_FILE", "").isNotEmpty()) {
-                    signingConfigs.getByName("release")
-                } else {
-                    signingConfigs.getByName("debug")
-                }
+            signingConfig = if (localProps != null && localProps.getProperty("RELEASE_STORE_FILE", "").isNotEmpty()) {
+                signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
             }
