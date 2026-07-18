@@ -41,8 +41,12 @@ class MainActivity : ComponentActivity() {
             sort = SortFilesUseCase(app.fileOps, app.db.sortLogDao())
         )
 
+        // Baca preferensi sekali saat activity dibuat.
+        // Toggle di Settings akan apply setelah recreate (normal Android pattern).
+        val useDynamic = app.prefs.useDynamicColor
+
         setContent {
-            SortitTheme {
+            SortitTheme(useDynamicColor = useDynamic) {
                 Surface(Modifier.fillMaxSize()) {
                     MainScreen(dashboardVm, templateVm, monitorVm, scanVm)
                 }

@@ -50,12 +50,16 @@ private val AppShapes = Shapes(
 )
 
 @Composable
-fun SortitTheme(content: @Composable () -> Unit) {
+fun SortitTheme(
+    useDynamicColor: Boolean = false,
+    content: @Composable () -> Unit
+) {
     val context = LocalContext.current
     val dark = isSystemInDarkTheme()
     val colorScheme = when {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && dark -> dynamicDarkColorScheme(context)
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> dynamicLightColorScheme(context)
+        // Material You: aktif hanya kalau user enable DAN device support
+        useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && dark -> dynamicDarkColorScheme(context)
+        useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> dynamicLightColorScheme(context)
         dark -> Dark
         else -> Light
     }

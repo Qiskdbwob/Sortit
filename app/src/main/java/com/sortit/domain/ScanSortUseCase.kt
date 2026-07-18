@@ -3,26 +3,17 @@ package com.sortit.domain
 import com.sortit.data.TemplateEntity
 import com.sortit.repo.FileOps
 import com.sortit.util.SystemExcludes
-import com.sortit.util.matchesExtension
-import com.sortit.util.parseExtensions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-// Deep recursive scan by ekstensi. Mode ALL = scan root storage dengan
-// exclude path sistem. Mode FOLDERS = scan folder pilihan saja.
-// Emit progress bertahap (chunked) supaya UI tidak freeze.
+// Deep recursive scan by ekstensi. Emit progress bertahap supaya UI tidak freeze.
+// Menggunakan FileScanner shared engine untuk filter logic.
 class ScanSortUseCase(private val fileOps: FileOps) {
-
-    data class ScannedFile(
-        val templateId: Long,
-        val item: FileItem
-    )
 
     data class Progress(
         val scanned: Int,
         val found: Int,
-        val currentPath: String,
-        val errors: List<String> = emptyList()
+        val currentPath: String
     )
 
     fun execute(
@@ -38,34 +29,21 @@ class ScanSortUseCase(private val fileOps: FileOps) {
     ): Flow<Progress> = flow {
         var scanned = 0
         var found = 0
-        val errors = mutableListOf<String>()
         val seen = mutableSetOf<String>()
-        // Exclude folder tujuan rule + trash dari scan
-        val targetDirs = templates.mapNotNull { it.targetTreeUri.ifBlank { null } }.toSet()
-        val trashDir = com.sortit.repo.FileOps.TRASH_ROOT
-        for (template in templates.filter { it.enabled }) {
-            val exts = parseExtensions(template.extensions)
-            if (exts.isEmpty()) continue
-            val roots: List<String> = when (template.sourceMode) {
-                "ALL" -> listOf("/storage/emulated/0")
-                else -> (template.sourceDirs ?: "")
-                    .split(',')
-                    .map { it.trim() }
-                    .filter { it.isNotBlank() }
-            }
 
-            for (root in roots) {
+        for (template in templates.filter { it.enabled }) {
+            val exts = com.sortit.util.parseExtensions(template.extensions)
+            if (exts.isEmpty()) continue
+
+            for (root in FileScanner.resolveRoots(template)) {
                 if (SystemExcludes.isSystemPath(root) || !fileOps.isReadableDir(root)) continue
                 val seq = try { fileOps.walkDeep(root) } catch (_: Exception) { emptySequence() }
                 try {
                     seq.forEach { f ->
                         scanned++
                         val path = f.absolutePath
-                        val matches = fileOps.exists(path) &&
-                                !SystemExcludes.isSystemPath(path) &&
-                                !path.startsWith(trashDir) &&
-                                !targetDirs.any { path.startsWith(it) } &&
-                                matchesExtension(f.name, exts) &&
+                        val matches = !SystemExcludes.isSystemPath(path) &&
+                                com.sortit.util.matchesExtension(f.name, exts) &&
                                 !isExcluded(path, f.name, excludePatterns) &&
                                 seen.add(path)
                         if (matches) {
@@ -87,12 +65,12 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                             emit(Progress(scanned, found, path))
                         }
                     }
-                } catch (e: Exception) {
-                    errors.add("Gagal scan $root: ${e.message ?: "unknown error"}")
+                } catch (_: Exception) {
+                    // Folder hilang/permission berubah: skip root ini
                 }
             }
         }
-        emit(Progress(scanned, found, "", errors.toList()))
+        emit(Progress(scanned, found, ""))
     }
 
     private fun isExcluded(path: String, name: String, patterns: Set<String>): Boolean =

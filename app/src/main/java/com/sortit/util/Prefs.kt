@@ -12,4 +12,9 @@ class Prefs(private val ctx: Context) {
     var allFilesGranted: Boolean
         get() = sp.getBoolean("all_files_granted", false)
         set(v) = sp.edit { putBoolean("all_files_granted", v) }
+
+    // false = pakai tema custom Sortit (Purple/Mint/Amber), true = Material You dynamic color
+    var useDynamicColor: Boolean
+        get() = sp.getBoolean("use_dynamic_color", false)
+        set(v) = sp.edit { putBoolean("use_dynamic_color", v) }
 }

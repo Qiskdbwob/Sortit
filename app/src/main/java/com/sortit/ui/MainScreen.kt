@@ -1,11 +1,10 @@
 package com.sortit.ui
 
-import androidx.compose.material3.ExperimentalMaterial3Api
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +20,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.List
@@ -32,12 +32,14 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -93,18 +95,9 @@ fun MainScreen(
     }
 
     val scanState by scanVm.state.collectAsState()
-    Box(Modifier.fillMaxSize()) {
-        MainTabs(dashboardVm, templateVm, monitorVm, scanVm)
-        when (val s = scanState) {
-            is ScanUiState.Scanning -> ScanFlowScreen(state = s, scanVm = scanVm)
-            is ScanUiState.Running -> ScanFlowScreen(state = s, scanVm = scanVm)
-            is ScanUiState.Preview -> ScanFlowScreen(state = s, scanVm = scanVm)
-            is ScanUiState.ExistingPending -> ScanFlowScreen(state = s, scanVm = scanVm)
-            is ScanUiState.Empty -> ScanFlowScreen(state = s, scanVm = scanVm)
-            is ScanUiState.Error -> ScanFlowScreen(state = s, scanVm = scanVm)
-            is ScanUiState.Done -> ScanFlowScreen(state = s, scanVm = scanVm)
-            ScanUiState.Idle -> { }
-        }
+    when (val s = scanState) {
+        is ScanUiState.Idle -> MainTabs(dashboardVm, templateVm, monitorVm, scanVm)
+        else -> ScanFlowScreen(state = s, scanVm = scanVm)
     }
 }
 
@@ -136,7 +129,6 @@ private fun PermissionGate(legacy: Boolean, onGrant: () -> Unit) {
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun MainTabs(
     dashboardVm: DashboardViewModel,
     templateVm: TemplateViewModel,
@@ -146,11 +138,19 @@ private fun MainTabs(
     var tab by remember { mutableIntStateOf(0) }
     var showScanLauncher by remember { mutableStateOf(false) }
     var addRuleRequest by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     val templates by templateVm.templates.collectAsState()
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(title = { Text("Sortit", fontWeight = FontWeight.ExtraBold) })
+            CenterAlignedTopAppBar(
+                title = { Text("Sortit", fontWeight = FontWeight.ExtraBold) },
+                actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Pengaturan")
+                    }
+                }
+            )
         },
         bottomBar = {
             NavigationBar {
@@ -217,6 +217,52 @@ private fun MainTabs(
             }
         )
     }
+
+    if (showSettings) {
+        SettingsDialog(
+            onDismiss = { showSettings = false }
+        )
+    }
+}
+
+@Composable
+private fun SettingsDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val app = context.applicationContext as SortitApplication
+    var dynamicColor by remember { mutableStateOf(app.prefs.useDynamicColor) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Pengaturan") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Warna dinamis", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Ikuti warna wallpaper (Material You). Nonaktifkan untuk tema ungu Sortit.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = dynamicColor,
+                        onCheckedChange = {
+                            dynamicColor = it
+                            app.prefs.useDynamicColor = it
+                        }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Tutup") }
+        }
+    )
 }
 
 @Composable
