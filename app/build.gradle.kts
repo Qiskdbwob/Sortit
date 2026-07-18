@@ -4,16 +4,6 @@ plugins {
     id("com.google.devtools.ksp") version "1.9.24-1.0.20"
 }
 
-// Load keystore config dari local.properties (tidak di-commit)
-val localProps = project.rootProject.file("local.properties")
-if (localProps.exists()) {
-    val props = java.util.Properties().apply { load(localProps.inputStream()) }
-    project.extra["RELEASE_STORE_FILE"] = props.getProperty("RELEASE_STORE_FILE", "")
-    project.extra["RELEASE_STORE_PASSWORD"] = props.getProperty("RELEASE_STORE_PASSWORD", "")
-    project.extra["RELEASE_KEY_ALIAS"] = props.getProperty("RELEASE_KEY_ALIAS", "")
-    project.extra["RELEASE_KEY_PASSWORD"] = props.getProperty("RELEASE_KEY_PASSWORD", "")
-}
-
 android {
     namespace = "com.sortit"
     compileSdk = 34
@@ -28,13 +18,15 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            val storeFile = project.extra["RELEASE_STORE_FILE"] as? String ?: ""
-            if (storeFile.isNotEmpty()) {
-                storeFile(file(storeFile))
-                storePassword(project.extra["RELEASE_STORE_PASSWORD"] as? String ?: "")
-                keyAlias(project.extra["RELEASE_KEY_ALIAS"] as? String ?: "")
-                keyPassword(project.extra["RELEASE_KEY_PASSWORD"] as? String ?: "")
+        val localProps = rootProject.file("local.properties")
+        if (localProps.exists()) {
+            create("release") {
+                val props = java.util.Properties()
+                props.load(localProps.inputStream())
+                storeFile = file(props.getProperty("RELEASE_STORE_FILE", ""))
+                storePassword = props.getProperty("RELEASE_STORE_PASSWORD", "")
+                keyAlias = props.getProperty("RELEASE_KEY_ALIAS", "")
+                keyPassword = props.getProperty("RELEASE_KEY_PASSWORD", "")
             }
         }
     }
@@ -47,11 +39,16 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            val releaseStoreFile = project.extra["RELEASE_STORE_FILE"] as? String ?: ""
-            signingConfig = if (releaseStoreFile.isNotEmpty()) {
-                signingConfigs.getByName("release")
+            // Fallback ke debug signing kalau tidak ada keystore release
+            signingConfig = if (rootProject.file("local.properties").exists()) {
+                val props = java.util.Properties()
+                props.load(rootProject.file("local.properties").inputStream())
+                if (props.getProperty("RELEASE_STORE_FILE", "").isNotEmpty()) {
+                    signingConfigs.getByName("release")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
             } else {
-                // Fallback ke debug signing kalau tidak ada keystore release
                 signingConfigs.getByName("debug")
             }
         }
