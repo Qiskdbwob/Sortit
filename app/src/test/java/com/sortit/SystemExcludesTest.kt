@@ -1,4 +1,5 @@
 package com.sortit.util
+import com.sortit.repo.FileOps
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
