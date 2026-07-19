@@ -3,8 +3,6 @@ package com.sortit.util
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
 import android.provider.DocumentsContract
 import androidx.core.content.FileProvider
 import java.io.File
@@ -34,20 +32,18 @@ object LinkUtils {
       } catch (_: Exception) { /* fallback */ }
     }
 
-    // External storage: DocumentsContract tree URI
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
-      try {
-        val treeUri = DocumentsContract.buildTreeUri(
-          Uri.parse("content://com.android.externalstorage.documents"),
-          "primary:${path.removePrefix("/storage/emulated/0/")}"
-        )
-        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-          setDataAndType(treeUri, DocumentsContract.Document.MIME_TYPE_DIR)
-          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        })
-        return
-      } catch (_: Exception) { /* fallback */ }
-    }
+    // External storage: DocumentsContract document URI
+    try {
+      val docId = "primary:${path.removePrefix("/storage/emulated/0/")}"
+      val docUri = DocumentsContract.buildDocumentUri(
+        "com.android.externalstorage.documents", docId
+      )
+      context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(docUri, DocumentsContract.Document.MIME_TYPE_DIR)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+      })
+      return
+    } catch (_: Exception) { /* fallback */ }
 
     // Fallback: parent folder via FileProvider
     try {
