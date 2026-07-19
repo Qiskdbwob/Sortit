@@ -11,55 +11,47 @@ object LinkUtils {
 
   /**
    * Buka folder di file manager. Navigate ke path spesifik.
-   * Semua path lewat FileProvider (content://) + ACTION_VIEW + MIME_TYPE_DIR.
-   * File manager yang support akan navigate ke folder tsb.
+   * Strategy:
+   * 1. Sortit paths → FileProvider content:// (reliable)
+   * 2. Semua path lain → FileProvider + vnd.android.document/directory
+   * 3. Fallback → buka parent folder
    */
   fun openInFileManager(context: Context, path: String) {
     val file = File(path)
     if (!file.exists()) return
 
-    // Sortit-owned paths via FileProvider
-    if (path.startsWith("/storage/emulated/0/Sortit")) {
-      try {
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-          setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
-          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        })
-        return
-      } catch (_: Exception) { /* fallback below */ }
-    }
-
-    // Semua path lain: coba FileProvider langsung
-    // file_paths.xml punya <external-path path="." /> → cover semua external storage
+    // Step 1 & 2: FileProvider untuk semua path
     try {
       val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
       context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
+        setDataAndType(uri, "vnd.android.document/directory")
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
       })
       return
-    } catch (_: Exception) { /* fallback below */ }
+    } catch (_: Exception) { /* fallback */ }
 
-    // Fallback: buka parent folder
+    // Step 3: parent folder
     try {
       val target = if (file.isDirectory) file else (file.parentFile ?: return)
       val parentUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", target)
       context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(parentUri, DocumentsContract.Document.MIME_TYPE_DIR)
+        setDataAndType(parentUri, "vnd.android.document/directory")
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
       })
     } catch (_: Exception) {
-      // Last resort: root storage
+      // Last resort: root storage via SAF authority
       try {
         context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-          setDataAndType(Uri.parse("content://com.android.externalstorage.documents/root/primary"), DocumentsContract.Document.MIME_TYPE_DIR)
+          setDataAndType(
+            Uri.parse("content://com.android.externalstorage.documents/document/primary%3A"),
+            "vnd.android.document/directory"
+          )
         })
       } catch (_: Exception) { /* silently fail */ }
     }
   }
 
-  /** Buka file media (image/video/audio) via galeri atau pemutar default. */
+  /** Buka file media via galeri/pemutar default. */
   fun openMedia(context: Context, path: String, mimeType: String?) {
     val file = File(path)
     if (!file.exists()) return

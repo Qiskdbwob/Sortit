@@ -6,8 +6,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 // Eksekusi pemindahan file terpilih (sudah lewat preview gate).
-// Aksi aman v1: MOVE = pindah ke folder target rule; TRASH = pindah ke .sortit-trash.
-// Tidak ada hapus permanen di v1.
+// MOVE = pindah ke <targetDir>/<ekstensi>/; TRASH = pindah ke .sortit-trash/<ekstensi>/
 class SortFilesUseCase(
     private val fileOps: FileOps,
     private val logDao: SortLogDao
@@ -21,6 +20,12 @@ class SortFilesUseCase(
         val currentPath: String
     )
 
+    /** Ambil ekstensi file tanpa titik, lowercase. "FILE.JPG" → "jpg", "noext" → "other" */
+    private fun extensionFolder(name: String): String {
+        val dot = name.lastIndexOf('.')
+        return if (dot > 0 && dot < name.length - 1) name.substring(dot + 1).lowercase() else "other"
+    }
+
     fun execute(
         templateId: Long,
         targetDir: String,
@@ -30,12 +35,16 @@ class SortFilesUseCase(
     ): Flow<Progress> = flow {
         var done = 0
         var failed = 0
-        if (action == Action.MOVE) fileOps.mkdirs(targetDir) else fileOps.mkdirs(FileOps.TRASH_ROOT)
+        val baseDir = if (action == Action.MOVE) targetDir else FileOps.TRASH_ROOT
+        fileOps.mkdirs(baseDir)
 
         for (item in items) {
+            val subDir = "$baseDir/${extensionFolder(item.name)}"
+            fileOps.mkdirs(subDir)
+
             val dst = when (action) {
-                Action.MOVE -> fileOps.move(item.path, targetDir)
-                Action.TRASH -> fileOps.moveToTrash(item.path)
+                Action.MOVE -> fileOps.move(item.path, subDir)
+                Action.TRASH -> fileOps.move(item.path, subDir)
             }
             if (dst != null) {
                 done++

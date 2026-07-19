@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sortit.data.MonitorEntity
 import com.sortit.data.SortLogEntity
@@ -100,7 +101,7 @@ fun DashboardScreen(
                 ) {
                   Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                   Spacer(Modifier.size(10.dp))
-                  Text(path)
+                  Text(path, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
               } }
             }
