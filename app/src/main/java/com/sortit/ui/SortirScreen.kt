@@ -136,6 +136,7 @@ private fun DoneDialog(state: ScanUiState.Done, onDone: () -> Unit) {
   )
 }
 
+@Composable
 private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel) {
   val pending = state.items.count { it.status == "PENDING" }
   val excluded = state.items.count { it.status == "EXCLUDED" }
