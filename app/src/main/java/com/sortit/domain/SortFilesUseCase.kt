@@ -2,8 +2,10 @@ package com.sortit.domain
 
 import com.sortit.data.SortLogDao
 import com.sortit.repo.FileOps
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 
 // Eksekusi pemindahan file terpilih (sudah lewat preview gate).
 // MOVE = pindah ke <targetDir>/<ekstensi>/; TRASH = pindah ke .sortit-trash/<ekstensi>/
@@ -75,5 +77,5 @@ class SortFilesUseCase(
             }
             emit(Progress(items.size, done, failed, item.path))
         }
-    }
+    }.flowOn(Dispatchers.IO)
 }

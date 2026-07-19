@@ -49,7 +49,7 @@ class ScanViewModel(
     val state: StateFlow<ScanUiState> = _state
 
     fun requestScan(ruleIds: List<Long>) = viewModelScope.launch {
-        val templates = ruleIds.distinct().mapNotNull { templateRepo.get(it) }.filter { it.enabled }
+        val templates = templateRepo.getAll(ruleIds.distinct()).filter { it.enabled }
         if (templates.isEmpty()) {
             _state.value = ScanUiState.Error("Pilih minimal 1 rule aktif untuk discan.")
             return@launch
@@ -69,16 +69,14 @@ class ScanViewModel(
             _state.value = ScanUiState.Idle
             return@launch
         }
-        val templates = session.ruleIds.split(',')
-            .mapNotNull { it.trim().toLongOrNull() }
-            .mapNotNull { templateRepo.get(it) }
-            .associateBy { it.id }
+        val ruleIds = session.ruleIds.split(',').mapNotNull { it.trim().toLongOrNull() }
+        val templates = templateRepo.getAll(ruleIds).associateBy { it.id }
         _state.value = ScanUiState.Preview(session.id, items, templates)
     }
 
     fun rescanPending(session: ScanSessionEntity, requestedRuleIds: List<Long>) = viewModelScope.launch {
         scanRepo.dismiss(session.id)
-        val templates = requestedRuleIds.distinct().mapNotNull { templateRepo.get(it) }.filter { it.enabled }
+        val templates = templateRepo.getAll(requestedRuleIds.distinct()).filter { it.enabled }
         if (templates.isEmpty()) {
             _state.value = ScanUiState.Error("Rule untuk scan ulang tidak ditemukan.")
             return@launch

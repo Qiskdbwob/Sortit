@@ -39,7 +39,9 @@ class ScanSessionRepository(private val db: AppDatabase) {
         totalFound = items.size
       )
     )
-    db.scanItemDao().insertAll(items.map { it.copy(sessionId = sessionId) })
+    if (items.isNotEmpty()) {
+      db.scanItemDao().insertAll(items.map { it.copy(sessionId = sessionId) })
+    }
     return sessionId
   }
 

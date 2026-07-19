@@ -3,8 +3,10 @@ package com.sortit.domain
 import com.sortit.data.TemplateEntity
 import com.sortit.repo.FileOps
 import com.sortit.util.SystemExcludes
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 
 // Deep recursive scan by ekstensi. Emit progress bertahap supaya UI tidak freeze.
 // Menggunakan FileScanner shared engine untuk filter logic.
@@ -72,7 +74,7 @@ class ScanSortUseCase(private val fileOps: FileOps) {
             }
         }
         emit(Progress(scanned, found, ""))
-    }
+    }.flowOn(Dispatchers.IO)
 
     private fun isExcluded(path: String, name: String, patterns: Set<String>): Boolean =
         patterns.any { path.startsWith(it) || name == it }

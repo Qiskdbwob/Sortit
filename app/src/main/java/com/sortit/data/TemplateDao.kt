@@ -16,6 +16,9 @@ interface TemplateDao {
     @Query("SELECT * FROM templates WHERE id = :id")
     suspend fun get(id: Long): TemplateEntity?
 
+    @Query("SELECT * FROM templates WHERE id IN (:ids)")
+    suspend fun getAll(ids: List<Long>): List<TemplateEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(t: TemplateEntity): Long
 
