@@ -10,17 +10,15 @@ import java.io.File
 object LinkUtils {
 
   /**
-   * Buka folder di file manager. Usaha navigate ke path spesifik.
-   * Strategy:
-   * 1. Path di bawah Sortit → FileProvider (paling reliable)
-   * 2. Path eksternal + MANAGE_EXTERNAL_STORAGE → DocumentsContract tree URI
-   * 3. Fallback → buka parent folder atau root storage
+   * Buka folder di file manager. Navigate ke path spesifik.
+   * Semua path lewat FileProvider (content://) + ACTION_VIEW + MIME_TYPE_DIR.
+   * File manager yang support akan navigate ke folder tsb.
    */
   fun openInFileManager(context: Context, path: String) {
     val file = File(path)
     if (!file.exists()) return
 
-    // Sortit-owned paths: FileProvider
+    // Sortit-owned paths via FileProvider
     if (path.startsWith("/storage/emulated/0/Sortit")) {
       try {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
@@ -29,23 +27,21 @@ object LinkUtils {
           addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         })
         return
-      } catch (_: Exception) { /* fallback */ }
+      } catch (_: Exception) { /* fallback below */ }
     }
 
-    // External storage: DocumentsContract document URI
+    // Semua path lain: coba FileProvider langsung
+    // file_paths.xml punya <external-path path="." /> → cover semua external storage
     try {
-      val docId = "primary:${path.removePrefix("/storage/emulated/0/")}"
-      val docUri = DocumentsContract.buildDocumentUri(
-        "com.android.externalstorage.documents", docId
-      )
+      val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
       context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(docUri, DocumentsContract.Document.MIME_TYPE_DIR)
+        setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
       })
       return
-    } catch (_: Exception) { /* fallback */ }
+    } catch (_: Exception) { /* fallback below */ }
 
-    // Fallback: parent folder via FileProvider
+    // Fallback: buka parent folder
     try {
       val target = if (file.isDirectory) file else (file.parentFile ?: return)
       val parentUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", target)
@@ -74,7 +70,6 @@ object LinkUtils {
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
       })
     } catch (_: Exception) {
-      // Fallback: open in file manager
       openInFileManager(context, path)
     }
   }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,15 +22,12 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -138,73 +136,62 @@ private fun DoneDialog(state: ScanUiState.Done, onDone: () -> Unit) {
   )
 }
 
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel) {
   val pending = state.items.count { it.status == "PENDING" }
   val excluded = state.items.count { it.status == "EXCLUDED" }
   val media = state.items.count { it.isMedia }
 
-  Scaffold(
-    topBar = {
-      CenterAlignedTopAppBar(
-        title = { Text("Review hasil scan", fontWeight = FontWeight.ExtraBold) },
-        navigationIcon = {
-          IconButton(onClick = { scanVm.closePreview() }) { Icon(Icons.Default.Close, contentDescription = "Tutup") }
-        }
-      )
+  AlertDialog(
+    onDismissRequest = { scanVm.closePreview() },
+    title = {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = { scanVm.closePreview() }) { Icon(Icons.Default.Close, contentDescription = "Tutup") }
+        Spacer(Modifier.size(4.dp))
+        Text("Review hasil scan", fontWeight = FontWeight.ExtraBold)
+      }
     },
-    bottomBar = {
-      Surface(tonalElevation = 4.dp) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-          Column(Modifier.weight(1f)) {
-            Text("$pending siap ditindak", fontWeight = FontWeight.Bold)
-            Text("$excluded dikecualikan \u2022 $media media", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-          }
-          OutlinedButton(
-            onClick = { scanVm.executePending(SortFilesUseCase.Action.TRASH) },
-            enabled = pending > 0
-          ) {
-            Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.size(6.dp))
-            Text("Trash")
-          }
-          Spacer(Modifier.size(8.dp))
-          Button(
-            onClick = { scanVm.executePending(SortFilesUseCase.Action.MOVE) },
-            enabled = pending > 0
-          ) { Text("Pindah") }
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Text("$pending siap ditindak \u2022 $excluded dikecualikan \u2022 $media media",
+          style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          TextButton(onClick = { scanVm.setAllExcluded(true) }) { Text("Kecualikan semua") }
+          TextButton(onClick = { scanVm.setAllExcluded(false) }) { Text("Sertikan semua") }
         }
+        if (state.items.isEmpty()) {
+          Text("Tidak ada file dalam sesi ini.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+          androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 400.dp)) {
+            items(state.items, key = { it.id }) { item ->
+              ScanItemRow(
+                item = item,
+                templateName = state.templates[item.templateId]?.name ?: "Rule #${item.templateId}",
+                onToggle = { scanVm.toggleExcluded(item.id, it) }
+              )
+            }
+          }
+        }
+      }
+    },
+    confirmButton = {
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(
+          onClick = { scanVm.executePending(SortFilesUseCase.Action.TRASH) },
+          enabled = pending > 0
+        ) {
+          Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
+          Spacer(Modifier.size(6.dp))
+          Text("Trash")
+        }
+        Button(
+          onClick = { scanVm.executePending(SortFilesUseCase.Action.MOVE) },
+          enabled = pending > 0
+        ) { Text("Pindah") }
       }
     }
-  ) { pad ->
-    LazyColumn(
-      modifier = Modifier.fillMaxSize().padding(pad),
-      contentPadding = PaddingValues(16.dp),
-      verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-      item {
-        SectionCard(title = "Pilih file yang dikecualikan", subtitle = "Default semua file ikut ditindak. Centang hanya untuk mengecualikan.") {
-          Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TextButton(onClick = { scanVm.setAllExcluded(true) }) { Text("Kecualikan semua") }
-            TextButton(onClick = { scanVm.setAllExcluded(false) }) { Text("Sertakan semua") }
-          }
-        }
-      }
-      if (state.items.isEmpty()) {
-        item { EmptyState(icon = Icons.Default.Search, title = "Tidak ada file", message = "Sesi ini tidak punya item.") }
-      } else {
-        items(state.items, key = { it.id }) { item ->
-          ScanItemRow(
-            item = item,
-            templateName = state.templates[item.templateId]?.name ?: "Rule #${item.templateId}",
-            onToggle = { scanVm.toggleExcluded(item.id, it) }
-          )
-        }
-      }
-    }
-  }
+  )
 }
+
 
 @Composable
 private fun ScanItemRow(item: ScanItemEntity, templateName: String, onToggle: (Boolean) -> Unit) {
