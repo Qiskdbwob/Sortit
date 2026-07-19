@@ -138,7 +138,10 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel) {
 private fun MonitorFileRow(item: FileItem) {
   val context = LocalContext.current
   Row(
-    Modifier.fillMaxWidth().clickable { LinkUtils.openInFileManager(context, item.path) },
+    Modifier.fillMaxWidth().clickable {
+      if (item.isMedia) LinkUtils.openMedia(context, item.path, item.mimeType)
+      else LinkUtils.openInFileManager(context, item.path)
+    },
     verticalAlignment = Alignment.CenterVertically
   ) {
     MediaThumb(item.name, item.path, item.mimeType, item.isMedia, Modifier.size(44.dp))

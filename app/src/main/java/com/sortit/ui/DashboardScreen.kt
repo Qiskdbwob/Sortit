@@ -25,6 +25,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import java.io.File
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -66,9 +71,42 @@ fun DashboardScreen(
       Text("${templates.count { it.enabled }} rule aktif \u2022 ${monitors.count { it.enabled }} monitor aktif", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     item {
+      val context = LocalContext.current
+      var showTargetPicker by remember { mutableStateOf(false) }
       Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        MetricCard("Dipindahkan", counts.moved.toString(), "file masuk folder target", Icons.Default.CheckCircle, Modifier.weight(1f))
-        MetricCard("Trash", counts.trashed.toString(), "file diamankan ke .sortit-trash", Icons.Default.Delete, Modifier.weight(1f))
+        MetricCard("Dipindahkan", counts.moved.toString(), "file masuk folder target", Icons.Default.CheckCircle, Modifier.weight(1f)) {
+          showTargetPicker = true
+        }
+        MetricCard("Trash", counts.trashed.toString(), "file diamankan ke .sortit-trash", Icons.Default.Delete, Modifier.weight(1f)) {
+          LinkUtils.openInFileManager(context, com.sortit.repo.FileOps.TRASH_ROOT)
+        }
+      }
+      if (showTargetPicker) {
+        val targets = templates.map { it.targetTreeUri }.distinct().filter { it.isNotBlank() }
+        AlertDialog(
+          onDismissRequest = { showTargetPicker = false },
+          title = { Text("Pilih folder tujuan") },
+          text = {
+            if (targets.isEmpty()) {
+              Text("Belum ada rule dengan folder tujuan.")
+            } else {
+              Column { targets.forEach { path ->
+                Row(
+                  Modifier.fillMaxWidth().clickable {
+                    showTargetPicker = false
+                    LinkUtils.openInFileManager(context, path)
+                  }.padding(vertical = 10.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                  Spacer(Modifier.size(10.dp))
+                  Text(path)
+                }
+              } }
+            }
+          },
+          confirmButton = { TextButton(onClick = { showTargetPicker = false }) { Text("Tutup") } }
+        )
       }
     }
     item {

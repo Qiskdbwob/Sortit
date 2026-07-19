@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.sortit.domain.ScanSortUseCase
 import com.sortit.domain.SortFilesUseCase
 import com.sortit.repo.ExcludeRepository
@@ -21,29 +23,54 @@ import com.sortit.ui.SortitTheme
 import com.sortit.ui.TemplateViewModel
 
 class MainActivity : ComponentActivity() {
+
+    private val templateRepo by lazy { TemplateRepository((application as SortitApplication).db) }
+    private val monitorRepo by lazy { MonitorRepository((application as SortitApplication).db) }
+    private val excludeRepo by lazy { ExcludeRepository((application as SortitApplication).db) }
+    private val logRepo by lazy { SortLogRepository((application as SortitApplication).db) }
+    private val scanRepo by lazy { ScanSessionRepository((application as SortitApplication).db) }
+
+    private val scanVm by lazy {
+        val app = application as SortitApplication
+        ViewModelProvider(this, object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                ScanViewModel(
+                    templateRepo, excludeRepo, scanRepo,
+                    ScanSortUseCase(app.fileOps),
+                    SortFilesUseCase(app.fileOps, app.db.sortLogDao())
+                ) as T
+        })[ScanViewModel::class.java]
+    }
+
+    private val templateVm by lazy {
+        ViewModelProvider(this, object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                TemplateViewModel(templateRepo, scanRepo) as T
+        })[TemplateViewModel::class.java]
+    }
+
+    private val monitorVm by lazy {
+        ViewModelProvider(this, object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                MonitorViewModel(monitorRepo) as T
+        })[MonitorViewModel::class.java]
+    }
+
+    private val dashboardVm by lazy {
+        ViewModelProvider(this, object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                DashboardViewModel(templateRepo, monitorRepo, logRepo, scanRepo) as T
+        })[DashboardViewModel::class.java]
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val app = application as SortitApplication
-        val templateRepo = TemplateRepository(app.db)
-        val monitorRepo = MonitorRepository(app.db)
-        val excludeRepo = ExcludeRepository(app.db)
-        val logRepo = SortLogRepository(app.db)
-        val scanRepo = ScanSessionRepository(app.db)
 
-        val templateVm = TemplateViewModel(templateRepo, scanRepo)
-        val monitorVm = MonitorViewModel(monitorRepo)
-        val dashboardVm = DashboardViewModel(templateRepo, monitorRepo, logRepo, scanRepo)
-        val scanVm = ScanViewModel(
-            templateRepo = templateRepo,
-            excludeRepo = excludeRepo,
-            scanRepo = scanRepo,
-            scan = ScanSortUseCase(app.fileOps),
-            sort = SortFilesUseCase(app.fileOps, app.db.sortLogDao())
-        )
-
-        // Baca preferensi sekali saat activity dibuat.
-        // Toggle di Settings akan apply setelah recreate (normal Android pattern).
-        val useDynamic = app.prefs.useDynamicColor
+        val useDynamic = (application as SortitApplication).prefs.useDynamicColor
 
         setContent {
             SortitTheme(useDynamicColor = useDynamic) {

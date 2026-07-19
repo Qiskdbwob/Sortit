@@ -1,5 +1,6 @@
 package com.sortit.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,9 +56,13 @@ fun MetricCard(
     value: String,
     subtitle: String,
     icon: ImageVector,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
-    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+    Card(
+        modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
