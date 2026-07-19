@@ -60,9 +60,9 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                                     isMedia = mime?.startsWith("image/") == true || mime?.startsWith("video/") == true
                                 )
                             )
-                            // Emit setiap file ditemukan + setiap 5 file dicek
+                            // Emit setiap file supaya UI update instan
                             emit(Progress(scanned, found, path))
-                        } else if (scanned % 5 == 0) {
+                        } else {
                             emit(Progress(scanned, found, path))
                         }
                     }

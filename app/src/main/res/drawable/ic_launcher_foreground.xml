@@ -4,38 +4,50 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Geometric S letter — main element, stroked path -->
-    <path
-        android:pathData="M 24,16 L 60,16 C 74,16 74,34 56,34 L 40,34 C 24,34 24,52 40,52 L 64,52"
-        android:strokeColor="#6D5BD0"
-        android:strokeWidth="11"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:fillColor="#00000000"/>
+    <!-- Blocky S — dark purple side faces -->
+    <path android:fillColor="#512DA8"
+        android:pathData="M 28,22 L 38,22 L 38,36 L 28,36 Z
+                          M 28,36 L 38,36 L 38,46 L 28,46 Z
+                          M 46,50 L 56,50 L 56,60 L 46,60 Z
+                          M 46,60 L 56,60 L 56,70 L 46,70 Z"/>
 
-    <!-- Open folder — back body + tab (lighter shade) -->
-    <path
-        android:pathData="M 48,66 L 58,66 L 62,74 L 80,74 L 80,84 L 48,84 Z"
-        android:fillColor="#FFB74D"/>
+    <!-- Blocky S — medium purple front faces -->
+    <path android:fillColor="#7C4DFF"
+        android:pathData="M 38,22 L 58,22 L 58,32 L 38,32 Z
+                          M 38,36 L 46,36 L 46,50 L 38,50 Z
+                          M 56,50 L 76,50 L 76,60 L 56,60 Z
+                          M 56,64 L 66,64 L 66,70 L 56,70 Z"/>
 
-    <!-- Open folder — front panel (depth effect, darker shade) -->
-    <path
-        android:pathData="M 48,78 L 80,78 L 80,84 L 48,84 Z"
-        android:fillColor="#FFA726"/>
+    <!-- S center connector -->
+    <path android:fillColor="#673AB7"
+        android:pathData="M 38,32 L 46,32 L 46,36 L 38,36 Z
+                          M 56,60 L 66,60 L 66,64 L 56,64 Z"/>
 
-    <!-- Curved arrow shaft — sorting/move indicator -->
+    <!-- Folder back body -->
+    <path android:fillColor="#CE93D8"
+        android:pathData="M 42,72 L 80,72 L 84,78 L 42,78 Z"/>
+
+    <!-- Folder tab -->
+    <path android:fillColor="#E1BEE7"
+        android:pathData="M 42,72 L 50,66 L 60,66 L 56,72 Z"/>
+
+    <!-- Folder front panel -->
+    <path android:fillColor="#BA68C8"
+        android:pathData="M 42,78 L 84,78 L 84,86 L 42,86 Z"/>
+
+    <!-- Arrow shaft (curved, from folder upward) -->
     <path
-        android:pathData="M 78,74 C 84,74 88,68 86,62"
-        android:strokeColor="#FF8F00"
-        android:strokeWidth="4"
+        android:pathData="M 76,78 C 82,72 84,64 80,58"
+        android:strokeColor="#E1BEE7"
+        android:strokeWidth="3.5"
         android:strokeLineCap="round"
         android:fillColor="#00000000"/>
 
     <!-- Arrowhead -->
     <path
-        android:pathData="M 82,60 L 86,62 L 82,66"
-        android:strokeColor="#FF8F00"
-        android:strokeWidth="4"
+        android:pathData="M 76,56 L 80,58 L 76,62"
+        android:strokeColor="#E1BEE7"
+        android:strokeWidth="3"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="#00000000"/>
