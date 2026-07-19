@@ -124,7 +124,7 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel) {
       if (file.exists()) {
         val subDir = "$destDir/${extensionFolder(file.name)}"
         File(subDir).mkdirs()
-        file.renameTo(File(subDir, file.name)) || run {
+        if (!file.renameTo(File(subDir, file.name))) {
           // fallback: copy then delete
           try {
             file.inputStream().use { input ->
@@ -214,7 +214,7 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel) {
                     val ext = extensionFolder(file.name)
                     val trashDir = "${FileOps.TRASH_ROOT}/$ext"
                     File(trashDir).mkdirs()
-                    file.renameTo(File(trashDir, file.name)) || run {
+                    if (!file.renameTo(File(trashDir, file.name))) {
                       try {
                         file.inputStream().use { input ->
                           File(trashDir, file.name).outputStream().use { output -> input.copyTo(output) }
