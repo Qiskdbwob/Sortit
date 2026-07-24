@@ -1,17 +1,16 @@
 name: CD
-# CD: build release APK. HANYA jalan jika CI (workflow "CI") sukses.
+# CD: build release APK signed. HANYA jalan jika CI sukses (atau manual).
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
-    branches: [main, master, dev]
+    branches: [main, master, dev, sortit-v2]
   workflow_dispatch:
 
 jobs:
   build-release:
     name: Build Release APK
-    # gate: CI harus sukses
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,15 +28,34 @@ jobs:
       - name: Grant execute permission
         run: chmod +x ./gradlew
 
-      - name: Decode keystore (jika ada secret)
+      - name: Decode release keystore
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
-          else
-            echo "No keystore secret; using debug signing for artifact."
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Release secrets missing (KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD). APK will use debug signing — update install may require uninstall."
+            exit 0
           fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/sortit-release.jks"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+          echo "store_file=$GITHUB_WORKSPACE/sortit-release.jks" >> "$GITHUB_OUTPUT"
 
-      - name: Build release APK
+      - name: Build release APK (signed)
+        if: steps.keystore.outputs.signed == 'true'
+        env:
+          SORTIT_STORE_FILE: ${{ steps.keystore.outputs.store_file }}
+          SORTIT_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SORTIT_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SORTIT_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Build release APK (debug-signed fallback)
+        if: steps.keystore.outputs.signed != 'true'
         run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload release APK
@@ -45,3 +63,14 @@ jobs:
         with:
           name: sortit-release-apk
           path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: Summary
+        run: |
+          echo "### Sortit release" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
+            echo "- Signing: **release keystore** (update tanpa uninstall)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- Signing: **debug** (install ulang mungkin perlu uninstall)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          ls -la app/build/outputs/apk/release/ || true
