@@ -1,6 +1,5 @@
 package com.sortit.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,29 +11,31 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -45,12 +46,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.sortit.SortitApplication
 import com.sortit.data.TemplateEntity
 import com.sortit.util.StorageAccess
@@ -105,7 +103,7 @@ private fun PermissionGate(legacy: Boolean, onGrant: () -> Unit) {
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Center
     ) {
-      Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+      Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(54.dp), tint = MaterialTheme.colorScheme.primary)
       Spacer(Modifier.height(16.dp))
       Text("Izin storage dibutuhkan", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
       Spacer(Modifier.height(8.dp))
@@ -121,8 +119,8 @@ private fun PermissionGate(legacy: Boolean, onGrant: () -> Unit) {
   }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun MainTabs(
   dashboardVm: DashboardViewModel,
   templateVm: TemplateViewModel,
@@ -137,21 +135,8 @@ private fun MainTabs(
 
   Scaffold(
     topBar = {
-      TopAppBar(
-        title = {
-          Column {
-            Text(
-              "SORTIT",
-              fontWeight = FontWeight.Bold,
-              style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 2.sp, fontFamily = FontFamily.Monospace)
-            )
-            Text(
-              "penyortir file lokal",
-              style = MaterialTheme.typography.labelSmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-          }
-        },
+      androidx.compose.material3.CenterAlignedTopAppBar(
+        title = { Text("Sortit", fontWeight = FontWeight.ExtraBold) },
         actions = {
           IconButton(onClick = { showSettings = true }) {
             Icon(Icons.Default.Settings, contentDescription = "Pengaturan")
@@ -180,6 +165,15 @@ private fun MainTabs(
           label = { Text("Monitor") }
         )
       }
+    },
+    floatingActionButton = {
+      SortitFabMenu(
+        onScan = { showScanLauncher = true },
+        onAddRule = {
+          tab = 1
+          addRuleRequest = true
+        }
+      )
     }
   ) { pad ->
     when (tab) {
@@ -238,7 +232,7 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
           Column(Modifier.weight(1f)) {
             Text("Warna dinamis", fontWeight = FontWeight.SemiBold)
             Text(
-              "Ikuti warna wallpaper (Material You). Nonaktifkan untuk tema Sortit.",
+              "Ikuti warna wallpaper (Material You). Nonaktifkan untuk tema ungu Sortit.",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -274,6 +268,28 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
+private fun SortitFabMenu(onScan: () -> Unit, onAddRule: () -> Unit) {
+  var expanded by remember { mutableStateOf(false) }
+  Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    if (expanded) {
+      ExtendedFloatingActionButton(
+        onClick = { expanded = false; onScan() },
+        icon = { Icon(Icons.Default.PlayArrow, null) },
+        text = { Text("Scan") }
+      )
+      ExtendedFloatingActionButton(
+        onClick = { expanded = false; onAddRule() },
+        icon = { Icon(Icons.Default.Add, null) },
+        text = { Text("Rule") }
+      )
+    }
+    FloatingActionButton(onClick = { expanded = !expanded }) {
+      Icon(if (expanded) Icons.Default.Close else Icons.Default.Add, contentDescription = "Aksi")
+    }
+  }
+}
+
+@Composable
 private fun ScanLauncherDialog(
   templates: List<TemplateEntity>,
   onDismiss: () -> Unit,
@@ -294,7 +310,7 @@ private fun ScanLauncherDialog(
         if (enabled.isEmpty()) {
           Text("Belum ada rule aktif.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
-          LazyColumn(Modifier.height(360.dp)) {
+          androidx.compose.foundation.lazy.LazyColumn(Modifier.height(360.dp)) {
             items(enabled.size) { idx ->
               val t = enabled[idx]
               Row(
