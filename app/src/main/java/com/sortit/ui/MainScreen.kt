@@ -56,7 +56,8 @@ fun MainScreen(
   dashboardVm: DashboardViewModel,
   templateVm: TemplateViewModel,
   monitorVm: MonitorViewModel,
-  scanVm: ScanViewModel
+  scanVm: ScanViewModel,
+  onDynamicColorChange: (Boolean) -> Unit = {}
 ) {
   val context = LocalContext.current
   var granted by remember { mutableStateOf(StorageAccess.has(context)) }
@@ -85,7 +86,7 @@ fun MainScreen(
 
   val scanState by scanVm.state.collectAsState()
   Box(Modifier.fillMaxSize()) {
-    MainTabs(dashboardVm, templateVm, monitorVm, scanVm)
+    MainTabs(dashboardVm, templateVm, monitorVm, scanVm, onDynamicColorChange)
     when (val s = scanState) {
       is ScanUiState.Idle -> Unit
       else -> ScanFlowScreen(state = s, scanVm = scanVm)
@@ -123,7 +124,8 @@ private fun MainTabs(
   dashboardVm: DashboardViewModel,
   templateVm: TemplateViewModel,
   monitorVm: MonitorViewModel,
-  scanVm: ScanViewModel
+  scanVm: ScanViewModel,
+  onDynamicColorChange: (Boolean) -> Unit
 ) {
   var tab by remember { mutableIntStateOf(0) }
   var showScanLauncher by remember { mutableStateOf(false) }
@@ -210,12 +212,12 @@ private fun MainTabs(
   }
 
   if (showSettings) {
-    SettingsDialog(onDismiss = { showSettings = false })
+    SettingsDialog(onDismiss = { showSettings = false }, onDynamicColorChange = onDynamicColorChange)
   }
 }
 
 @Composable
-private fun SettingsDialog(onDismiss: () -> Unit) {
+private fun SettingsDialog(onDismiss: () -> Unit, onDynamicColorChange: (Boolean) -> Unit) {
   val context = LocalContext.current
   val app = context.applicationContext as SortitApplication
   var dynamicColor by remember { mutableStateOf(app.prefs.useDynamicColor) }
@@ -241,7 +243,7 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
           }
           Switch(
             checked = dynamicColor,
-            onCheckedChange = { dynamicColor = it; app.prefs.useDynamicColor = it }
+            onCheckedChange = { dynamicColor = it; onDynamicColorChange(it) }
           )
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

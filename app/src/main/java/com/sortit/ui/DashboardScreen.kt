@@ -44,6 +44,7 @@ import com.sortit.ui.components.StubTicket
 import com.sortit.ui.components.TallyItem
 import com.sortit.ui.components.formatDate
 import com.sortit.util.LinkUtils
+import com.sortit.util.splitMonitorPaths
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -140,9 +141,11 @@ private fun MonitorStatusLine(m: MonitorEntity) {
   val inspection by produceState<ScanPathUseCase.PathInspection?>(initialValue = null, m.path, m.enabled) {
     value = withContext(Dispatchers.IO) { if (m.enabled) scan.inspect(m.path) else null }
   }
+  val paths = remember(m.path) { splitMonitorPaths(m.path) }
+  val pathLabel = if (paths.size <= 1) (paths.firstOrNull() ?: m.path) else "${paths.size} folder · ${paths.first()}"
   StubTicket(
     title = m.name,
-    path = m.path,
+    path = pathLabel,
     stub = {
       if (!m.enabled) {
         StampBadge("Nonaktif", StampKind.PENDING)

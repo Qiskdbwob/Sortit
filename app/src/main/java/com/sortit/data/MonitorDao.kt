@@ -27,4 +27,7 @@ interface MonitorDao {
 
     @Query("SELECT COUNT(*) FROM monitors WHERE isDefault = 1")
     suspend fun countDefaults(): Int
+
+    @Query("SELECT * FROM monitors")
+    suspend fun getAllOnce(): List<MonitorEntity>
 }

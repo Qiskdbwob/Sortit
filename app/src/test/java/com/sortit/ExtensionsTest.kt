@@ -27,4 +27,24 @@ class ExtensionsTest {
         assertFalse(matchesExtension("noext", setOf("txt")))
         assertFalse(matchesExtension("a.txt", setOf("bak")))
     }
+
+    @Test
+    fun `truncateFileName keeps extension visible`() {
+        val longName = "very_long_filename_photo_export.jpg"
+        val out = truncateFileName(longName, maxLen = 24)
+        assertTrue(out.endsWith(".jpg"))
+        assertTrue(out.contains("\u2026"))
+        assertTrue(out.length <= 24)
+    }
+
+    @Test
+    fun `truncateFileName short name unchanged`() {
+        assertEquals("a.txt", truncateFileName("a.txt"))
+    }
+
+    @Test
+    fun `splitMonitorPaths supports newline and pipe`() {
+        val raw = "/a/b\n/c/d|/e/f"
+        assertEquals(listOf("/a/b", "/c/d", "/e/f"), splitMonitorPaths(raw))
+    }
 }

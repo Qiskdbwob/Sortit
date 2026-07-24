@@ -30,4 +30,7 @@ interface TemplateDao {
 
     @Query("SELECT COUNT(*) FROM templates WHERE isDefault = 1")
     suspend fun countDefaults(): Int
+
+    @Query("SELECT * FROM templates")
+    suspend fun getAllOnce(): List<TemplateEntity>
 }

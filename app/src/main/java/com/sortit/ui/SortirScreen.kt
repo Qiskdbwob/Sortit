@@ -40,7 +40,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sortit.data.ScanItemEntity
 import com.sortit.domain.SortFilesUseCase
@@ -52,6 +51,7 @@ import com.sortit.ui.components.OneLinePath
 import com.sortit.ui.components.SectionCard
 import com.sortit.ui.components.formatDate
 import com.sortit.ui.components.formatSize
+import com.sortit.util.truncateFileName
 
 @Composable
 fun ScanFlowScreen(state: ScanUiState, scanVm: ScanViewModel) {
@@ -228,7 +228,7 @@ private fun ScanItemRow(item: ScanItemEntity, templateName: String, onToggle: (B
       MediaThumb(item.name, item.path, item.mimeType, item.isMedia, Modifier.size(56.dp))
       Spacer(Modifier.size(12.dp))
       Column(Modifier.weight(1f)) {
-        Text(item.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(truncateFileName(item.name), fontWeight = FontWeight.SemiBold, maxLines = 1)
         MonoText("$templateName \u00b7 ${formatSize(item.size)} \u00b7 ${formatDate(item.lastModified)}")
         OneLinePath(item.path)
       }
