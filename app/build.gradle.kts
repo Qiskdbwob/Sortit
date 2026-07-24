@@ -14,6 +14,21 @@ fun readLocalProps(): Properties? {
 }
 val localProps = readLocalProps()
 
+// CI: env vars dari GitHub Actions secrets
+val envStoreFile = System.getenv("SORTIT_STORE_FILE")
+val envStorePassword = System.getenv("SORTIT_STORE_PASSWORD")
+val envKeyAlias = System.getenv("SORTIT_KEY_ALIAS")
+val envKeyPassword = System.getenv("SORTIT_KEY_PASSWORD")
+
+val hasEnvSigning = !envStoreFile.isNullOrBlank()
+    && !envStorePassword.isNullOrBlank()
+    && !envKeyAlias.isNullOrBlank()
+    && !envKeyPassword.isNullOrBlank()
+    && file(envStoreFile!!).exists()
+
+val hasLocalSigning = localProps != null
+    && localProps.getProperty("RELEASE_STORE_FILE", "").isNotEmpty()
+
 android {
     namespace = "com.sortit"
     compileSdk = 34
@@ -22,15 +37,22 @@ android {
         applicationId = "com.sortit"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
-        if (localProps != null && localProps.getProperty("RELEASE_STORE_FILE", "").isNotEmpty()) {
+        if (hasEnvSigning) {
             create("release") {
-                storeFile = file(localProps.getProperty("RELEASE_STORE_FILE"))
+                storeFile = file(envStoreFile!!)
+                storePassword = envStorePassword
+                keyAlias = envKeyAlias
+                keyPassword = envKeyPassword
+            }
+        } else if (hasLocalSigning) {
+            create("release") {
+                storeFile = file(localProps!!.getProperty("RELEASE_STORE_FILE"))
                 storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD", "")
                 keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS", "")
                 keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD", "")
@@ -46,10 +68,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = if (localProps != null && localProps.getProperty("RELEASE_STORE_FILE", "").isNotEmpty()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            signingConfig = when {
+                hasEnvSigning || hasLocalSigning -> signingConfigs.getByName("release")
+                else -> signingConfigs.getByName("debug")
             }
         }
     }

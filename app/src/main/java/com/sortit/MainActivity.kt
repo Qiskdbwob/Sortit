@@ -77,7 +77,13 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var useDynamic by remember { mutableStateOf(app.prefs.useDynamicColor) }
-            SortitTheme(useDynamicColor = useDynamic) {
+            var themeMode by remember { mutableStateOf(app.prefs.themeMode) }
+            val darkTheme = when (themeMode) {
+                "light" -> false
+                "dark" -> true
+                else -> null // system
+            }
+            SortitTheme(useDynamicColor = useDynamic, darkTheme = darkTheme) {
                 Surface(Modifier.fillMaxSize()) {
                     MainScreen(
                         dashboardVm = dashboardVm,
@@ -87,6 +93,11 @@ class MainActivity : ComponentActivity() {
                         onDynamicColorChange = { enabled ->
                             app.prefs.useDynamicColor = enabled
                             useDynamic = enabled
+                        },
+                        themeMode = themeMode,
+                        onThemeModeChange = { mode ->
+                            app.prefs.themeMode = mode
+                            themeMode = mode
                         }
                     )
                 }

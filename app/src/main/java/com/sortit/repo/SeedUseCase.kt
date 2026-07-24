@@ -8,16 +8,16 @@ import com.sortit.util.joinMonitorPaths
 
 /**
  * Seed default + migrasi ringan.
- * seedVersion 2: sampah tanpa txt/bak; monitor WA multi-folder.
+ * seedVersion 3: sampah tanpa txt/bak/nomedia; monitor WA multi-folder.
  */
 class SeedUseCase(private val db: AppDatabase) {
 
     companion object {
-        const val CURRENT_SEED_VERSION = 2
+        const val CURRENT_SEED_VERSION = 3
 
         // Ekstensi sampah yang jarang penting bagi user (tanpa txt/bak).
         const val SAMPAH_EXTS =
-            "tmp,temp,cache,crdownload,part,download,partial,log,old,swp,swo,thumbs,thumb,nomedia,torrent,aria2,dmp,chk"
+            "tmp,temp,cache,crdownload,part,download,partial,log,old,swp,swo,thumbs,thumb,torrent,aria2,dmp,chk"
 
         private val WA_DOCS = listOf(
             "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents",
@@ -121,7 +121,7 @@ class SeedUseCase(private val db: AppDatabase) {
         val sampah = all.firstOrNull { it.isDefault && it.name.equals("sampah", ignoreCase = true) }
         if (sampah != null) {
             val old = sampah.extensions.lowercase()
-            if (old.contains("txt") || old.contains("bak") || old == "tmp,cache,webp") {
+            if (old.contains("txt") || old.contains("bak") || old.contains("nomedia") || old == "tmp,cache,webp") {
                 db.templateDao().update(sampah.copy(extensions = SAMPAH_EXTS))
             }
         }

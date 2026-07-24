@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,7 +58,9 @@ fun MainScreen(
   templateVm: TemplateViewModel,
   monitorVm: MonitorViewModel,
   scanVm: ScanViewModel,
-  onDynamicColorChange: (Boolean) -> Unit = {}
+  onDynamicColorChange: (Boolean) -> Unit = {},
+  themeMode: String = "system",
+  onThemeModeChange: (String) -> Unit = {}
 ) {
   val context = LocalContext.current
   var granted by remember { mutableStateOf(StorageAccess.has(context)) }
@@ -86,7 +89,7 @@ fun MainScreen(
 
   val scanState by scanVm.state.collectAsState()
   Box(Modifier.fillMaxSize()) {
-    MainTabs(dashboardVm, templateVm, monitorVm, scanVm, onDynamicColorChange)
+    MainTabs(dashboardVm, templateVm, monitorVm, scanVm, onDynamicColorChange, themeMode, onThemeModeChange)
     when (val s = scanState) {
       is ScanUiState.Idle -> Unit
       else -> ScanFlowScreen(state = s, scanVm = scanVm)
@@ -125,7 +128,9 @@ private fun MainTabs(
   templateVm: TemplateViewModel,
   monitorVm: MonitorViewModel,
   scanVm: ScanViewModel,
-  onDynamicColorChange: (Boolean) -> Unit
+  onDynamicColorChange: (Boolean) -> Unit,
+  themeMode: String,
+  onThemeModeChange: (String) -> Unit
 ) {
   var tab by remember { mutableIntStateOf(0) }
   var showScanLauncher by remember { mutableStateOf(false) }
@@ -212,15 +217,21 @@ private fun MainTabs(
   }
 
   if (showSettings) {
-    SettingsDialog(onDismiss = { showSettings = false }, onDynamicColorChange = onDynamicColorChange)
+    SettingsDialog(onDismiss = { showSettings = false }, onDynamicColorChange = onDynamicColorChange, themeMode = themeMode, onThemeModeChange = onThemeModeChange)
   }
 }
 
 @Composable
-private fun SettingsDialog(onDismiss: () -> Unit, onDynamicColorChange: (Boolean) -> Unit) {
+private fun SettingsDialog(
+  onDismiss: () -> Unit,
+  onDynamicColorChange: (Boolean) -> Unit,
+  themeMode: String,
+  onThemeModeChange: (String) -> Unit
+) {
   val context = LocalContext.current
   val app = context.applicationContext as SortitApplication
   var dynamicColor by remember { mutableStateOf(app.prefs.useDynamicColor) }
+  var mode by remember { mutableStateOf(themeMode) }
   var retentionDays by remember { mutableIntStateOf(app.prefs.trashRetentionDays) }
 
   AlertDialog(
@@ -228,6 +239,31 @@ private fun SettingsDialog(onDismiss: () -> Unit, onDynamicColorChange: (Boolean
     title = { Text("Pengaturan") },
     text = {
       Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text("Mode tampilan", fontWeight = FontWeight.SemiBold)
+          Text(
+            "Siang / malam / ikuti HP.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(
+              "system" to "Sistem",
+              "light" to "Siang",
+              "dark" to "Malam"
+            ).forEach { (value, label) ->
+              val selected = mode == value
+              if (selected) {
+                Button(onClick = { }) { Text(label) }
+              } else {
+                OutlinedButton(onClick = {
+                  mode = value
+                  onThemeModeChange(value)
+                }) { Text(label) }
+              }
+            }
+          }
+        }
         Row(
           Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.SpaceBetween,

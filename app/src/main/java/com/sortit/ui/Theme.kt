@@ -162,13 +162,17 @@ private val DarkExtended = SortitExtendedColors(
 
 val LocalSortitColors = compositionLocalOf { LightExtended }
 
+/**
+ * [darkTheme] null = ikuti sistem; true = malam; false = siang.
+ */
 @Composable
 fun SortitTheme(
     useDynamicColor: Boolean = false,
+    darkTheme: Boolean? = null,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    val dark = isSystemInDarkTheme()
+    val dark = darkTheme ?: isSystemInDarkTheme()
     val colorScheme = when {
         // Material You: aktif hanya kalau user enable DAN device support
         useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && dark -> dynamicDarkColorScheme(context)

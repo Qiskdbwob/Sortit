@@ -18,6 +18,13 @@ class Prefs(private val ctx: Context) {
   var useDynamicColor: Boolean
     get() = sp.getBoolean("use_dynamic_color", false)
     set(v) = sp.edit { putBoolean("use_dynamic_color", v) }
+  /**
+   * Mode tampilan: "system" | "light" | "dark"
+   * default system = ikuti HP.
+   */
+  var themeMode: String
+    get() = sp.getString("theme_mode", "system") ?: "system"
+    set(v) = sp.edit { putString("theme_mode", v) }
   var trashRetentionDays: Int
     get() = sp.getInt("trash_retention_days", 14)
     set(v) = sp.edit { putInt("trash_retention_days", v) }
