@@ -14,16 +14,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,8 +43,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sortit.SortitApplication
 import com.sortit.data.TemplateEntity
 import com.sortit.util.StorageAccess
@@ -103,7 +101,7 @@ private fun PermissionGate(legacy: Boolean, onGrant: () -> Unit) {
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Center
     ) {
-      Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(54.dp), tint = MaterialTheme.colorScheme.primary)
+      Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
       Spacer(Modifier.height(16.dp))
       Text("Izin storage dibutuhkan", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
       Spacer(Modifier.height(8.dp))
@@ -136,7 +134,20 @@ private fun MainTabs(
   Scaffold(
     topBar = {
       androidx.compose.material3.CenterAlignedTopAppBar(
-        title = { Text("Sortit", fontWeight = FontWeight.ExtraBold) },
+        title = {
+          Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+              "SORTIT",
+              fontWeight = FontWeight.Bold,
+              style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 2.sp, fontFamily = FontFamily.Monospace)
+            )
+            Text(
+              "penyortir file lokal",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+          }
+        },
         actions = {
           IconButton(onClick = { showSettings = true }) {
             Icon(Icons.Default.Settings, contentDescription = "Pengaturan")
@@ -165,15 +176,6 @@ private fun MainTabs(
           label = { Text("Monitor") }
         )
       }
-    },
-    floatingActionButton = {
-      SortitFabMenu(
-        onScan = { showScanLauncher = true },
-        onAddRule = {
-          tab = 1
-          addRuleRequest = true
-        }
-      )
     }
   ) { pad ->
     when (tab) {
@@ -232,7 +234,7 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
           Column(Modifier.weight(1f)) {
             Text("Warna dinamis", fontWeight = FontWeight.SemiBold)
             Text(
-              "Ikuti warna wallpaper (Material You). Nonaktifkan untuk tema ungu Sortit.",
+              "Ikuti warna wallpaper (Material You). Nonaktifkan untuk tema Sortit.",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -267,27 +269,6 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
   )
 }
 
-@Composable
-private fun SortitFabMenu(onScan: () -> Unit, onAddRule: () -> Unit) {
-  var expanded by remember { mutableStateOf(false) }
-  Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-    if (expanded) {
-      ExtendedFloatingActionButton(
-        onClick = { expanded = false; onScan() },
-        icon = { Icon(Icons.Default.PlayArrow, null) },
-        text = { Text("Scan") }
-      )
-      ExtendedFloatingActionButton(
-        onClick = { expanded = false; onAddRule() },
-        icon = { Icon(Icons.Default.Add, null) },
-        text = { Text("Rule") }
-      )
-    }
-    FloatingActionButton(onClick = { expanded = !expanded }) {
-      Icon(if (expanded) Icons.Default.Close else Icons.Default.Add, contentDescription = "Aksi")
-    }
-  }
-}
 
 @Composable
 private fun ScanLauncherDialog(
