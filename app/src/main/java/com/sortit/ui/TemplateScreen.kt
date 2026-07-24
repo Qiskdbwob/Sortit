@@ -9,9 +9,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,8 +22,6 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,10 +44,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sortit.data.TemplateEntity
-import com.sortit.domain.ScanPathUseCase
+import com.sortit.ui.components.DashedDivider
 import com.sortit.ui.components.EmptyState
+import com.sortit.ui.components.Kicker
+import com.sortit.ui.components.MonoText
 import com.sortit.ui.components.OneLinePath
-import com.sortit.ui.components.StatusBadge
+import com.sortit.ui.components.TagChip
+import com.sortit.ui.components.Ticket
 import com.sortit.util.StoragePaths
 import com.sortit.util.SystemExcludes
 import com.sortit.util.parseExtensions
@@ -78,9 +78,15 @@ fun RulesScreen(
     item {
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-          Text("Rules", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-          Text("${list.count { it.enabled }} aktif \u2022 ${list.size} total", color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Kicker("Rules")
+          Spacer(Modifier.height(4.dp))
+          Text("Rules", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+          Text("${list.count { it.enabled }} aktif \u00b7 ${list.size} total", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        IconButton(onClick = { editing = null; showEditor = true }) {
+          Icon(Icons.Default.Add, contentDescription = "Rule baru")
+        }
+        Spacer(Modifier.size(2.dp))
         OutlinedButton(
           onClick = { onScanRules(list.filter { it.enabled }.map { it.id }) },
           enabled = list.any { it.enabled }
@@ -92,7 +98,15 @@ fun RulesScreen(
       }
     }
     if (list.isEmpty()) {
-      item { EmptyState(Icons.Default.Add, "Belum ada rule", "Buat rule pertama untuk mulai mengorganisir file.") }
+      item {
+        EmptyState(
+          icon = Icons.Default.Folder,
+          title = "Belum ada rule",
+          message = "Buat rule pertama untuk mulai mengorganisir file.",
+          actionLabel = "Buat rule baru",
+          onAction = { editing = null; showEditor = true }
+        )
+      }
     } else {
       items(list, key = { it.id }) { t ->
         RuleCard(
@@ -138,28 +152,35 @@ private fun RuleCard(
   onDelete: () -> Unit,
   onScan: () -> Unit
 ) {
-  Card(
-    modifier = Modifier.fillMaxWidth(),
-    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-  ) {
-    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+  Ticket(accent = if (t.enabled) MaterialTheme.colorScheme.primary else null) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
           Row(verticalAlignment = Alignment.CenterVertically) {
             Text(t.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.size(8.dp))
-            if (t.isDefault) StatusBadge("Default", ok = null)
+            if (t.isDefault) {
+              Spacer(Modifier.size(8.dp))
+              TagChip("Default")
+            }
           }
-          Text(t.extensions, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+          MonoText(
+            text = t.extensions.replace(",", " \u00b7 "),
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.bodyMedium
+          )
         }
         Switch(checked = t.enabled, onCheckedChange = onToggle)
       }
-      OneLinePath("Target: ${StoragePaths.displayPath(t.targetTreeUri)}")
-      Text(
-        if (t.sourceMode == "ALL") "Sumber: Scan semua storage" else "Sumber: ${t.sourceDirs ?: "-"}",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-      )
+      Column {
+        MonoText("Target \u2014 ${StoragePaths.displayPath(t.targetTreeUri)}")
+        Text(
+          if (t.sourceMode == "ALL") "Sumber: Scan semua storage" else "Sumber: ${t.sourceDirs ?: "-"}",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+      }
+      DashedDivider(Modifier.fillMaxWidth().height(1.dp), vertical = false)
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = onScan, enabled = t.enabled) {
           Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(18.dp))

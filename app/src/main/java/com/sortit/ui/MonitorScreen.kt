@@ -4,43 +4,31 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.MoveUp
-import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -57,11 +45,15 @@ import androidx.compose.ui.unit.dp
 import com.sortit.data.MonitorEntity
 import com.sortit.domain.FileItem
 import com.sortit.domain.ScanPathUseCase
-import com.sortit.repo.FileOps
+import com.sortit.ui.components.DashedDivider
 import com.sortit.ui.components.EmptyState
+import com.sortit.ui.components.Kicker
 import com.sortit.ui.components.MediaThumb
+import com.sortit.ui.components.MonoText
 import com.sortit.ui.components.OneLinePath
-import com.sortit.ui.components.StatusBadge
+import com.sortit.ui.components.StampBadge
+import com.sortit.ui.components.StampKind
+import com.sortit.ui.components.Ticket
 import com.sortit.ui.components.formatSize
 import com.sortit.util.LinkUtils
 import com.sortit.util.StoragePaths
@@ -78,7 +70,11 @@ fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
   LazyColumn(modifier = modifier, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
       Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text("Monitor path", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+        Column {
+          Kicker("Monitor")
+          Spacer(Modifier.height(4.dp))
+          Text("Monitor path", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        }
         OutlinedButton(onClick = { showAdd = true }) {
           Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
           Spacer(Modifier.size(6.dp))
@@ -100,47 +96,16 @@ fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
   }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel) {
-  val context = LocalContext.current
   val scan = remember { ScanPathUseCase(RealFileOpsHolder.ops) }
   val inspection by produceState<ScanPathUseCase.PathInspection?>(initialValue = null, m.path, m.enabled) {
     value = withContext(Dispatchers.IO) { if (m.enabled) scan.inspect(m.path) else null }
   }
   var showFiles by remember { mutableStateOf(false) }
-  var selectMode by remember { mutableStateOf(false) }
-  var selectedPaths by remember { mutableStateOf(setOf<String>()) }
 
-  // SAF launcher for "pindah" action
-  val safLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-    uri ?: return@rememberLauncherForActivityResult
-    runCatching {
-      context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-    }
-    val destDir = StoragePaths.uriToPath(uri) ?: uri.toString()
-    selectedPaths.forEach { path ->
-      val file = File(path)
-      if (file.exists()) {
-        val subDir = "$destDir/${extensionFolder(file.name)}"
-        File(subDir).mkdirs()
-        if (!file.renameTo(File(subDir, file.name))) {
-          // fallback: copy then delete
-          try {
-            file.inputStream().use { input ->
-              File(subDir, file.name).outputStream().use { output -> input.copyTo(output) }
-            }
-            file.delete()
-          } catch (_: Exception) {}
-        }
-      }
-    }
-    selectMode = false
-    selectedPaths = emptySet()
-  }
-
-  Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+  Ticket(accent = if (m.enabled) MaterialTheme.colorScheme.primary else null) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
           Text(m.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
@@ -150,86 +115,29 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel) {
       }
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         val insp = inspection
-        if (!m.enabled) StatusBadge("Nonaktif", ok = null)
-        else if (insp == null) StatusBadge("Cek...", ok = null)
-        else StatusBadge(if (insp.readable) "Readable \u2022 ${insp.fileCount}" else "Tidak readable", ok = insp.readable)
+        if (!m.enabled) StampBadge("Nonaktif", StampKind.PENDING)
+        else if (insp == null) StampBadge("Cek", StampKind.PENDING)
+        else if (insp.readable) StampBadge("Readable \u00b7 ${insp.fileCount}", StampKind.MOVE)
+        else StampBadge("Tidak readable", StampKind.WARN)
         Spacer(Modifier.weight(1f))
         IconButton(onClick = { vm.delete(m) }) { Icon(Icons.Default.Delete, contentDescription = "Hapus") }
       }
       if (inspection != null && inspection!!.fileCount > 0) {
-        OutlinedButton(onClick = { showFiles = !showFiles }) {
+        OutlinedButton(onClick = { showFiles = !showFiles }, modifier = Modifier.fillMaxWidth()) {
           Text(if (showFiles) "Sembunyikan file" else "Lihat file (${inspection!!.fileCount})")
         }
         if (showFiles) {
+          DashedDivider(Modifier.fillMaxWidth().height(1.dp), vertical = false)
           val files = inspection!!.files.take(8)
           Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            files.forEach { item ->
-              MonitorFileRow(
-                item = item,
-                selectMode = selectMode,
-                isSelected = item.path in selectedPaths,
-                onLongPress = {
-                  selectMode = true
-                  selectedPaths = selectedPaths + item.path
-                },
-                onSelectToggle = { sel ->
-                  selectedPaths = if (sel) selectedPaths + item.path else selectedPaths - item.path
-                  if (selectedPaths.isEmpty()) selectMode = false
-                },
-                onTap = {
-                  if (item.isMedia) LinkUtils.openMedia(context, item.path, item.mimeType)
-                  else LinkUtils.openInFileManager(context, item.path)
-                }
-              )
-            }
+            files.forEach { MonitorFileRow(it) }
             if (inspection!!.fileCount > files.size) {
-              Text("+${inspection!!.fileCount - files.size} file lainnya", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-            }
-          }
-        }
-      }
-
-      // Selection action bar
-      if (selectMode && selectedPaths.isNotEmpty()) {
-        Surface(tonalElevation = 4.dp, shape = MaterialTheme.shapes.medium) {
-          Row(
-            Modifier.fillMaxWidth().padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Text("${selectedPaths.size} dipilih", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-              IconButton(onClick = {
-                selectedPaths = inspection?.files?.map { it.path }?.toSet() ?: selectedPaths
-              }) { Icon(Icons.Default.SelectAll, contentDescription = "Pilih semua") }
-              IconButton(onClick = {
-                // Pindah via SAF
-                safLauncher.launch(null)
-              }) { Icon(Icons.Default.MoveUp, contentDescription = "Pindah") }
-              IconButton(onClick = {
-                // Hapus ke trash (sortir by extension)
-                selectedPaths.forEach { path ->
-                  val file = File(path)
-                  if (file.exists()) {
-                    val ext = extensionFolder(file.name)
-                    val trashDir = "${FileOps.TRASH_ROOT}/$ext"
-                    File(trashDir).mkdirs()
-                    if (!file.renameTo(File(trashDir, file.name))) {
-                      try {
-                        file.inputStream().use { input ->
-                          File(trashDir, file.name).outputStream().use { output -> input.copyTo(output) }
-                        }
-                        file.delete()
-                      } catch (_: Exception) {}
-                    }
-                  }
-                }
-                selectMode = false
-                selectedPaths = emptySet()
-              }) { Icon(Icons.Default.Delete, contentDescription = "Hapus") }
-              IconButton(onClick = { selectMode = false; selectedPaths = emptySet() }) {
-                Icon(Icons.Default.Close, contentDescription = "Batal")
-              }
+              Text(
+                "+${inspection!!.fileCount - files.size} file lainnya",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+              )
             }
           }
         }
@@ -238,39 +146,18 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel) {
   }
 }
 
-private fun extensionFolder(name: String): String {
-  val dot = name.lastIndexOf('.')
-  return if (dot > 0 && dot < name.length - 1) name.substring(dot + 1).lowercase() else "other"
-}
-
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MonitorFileRow(
-  item: FileItem,
-  selectMode: Boolean,
-  isSelected: Boolean,
-  onLongPress: () -> Unit,
-  onSelectToggle: (Boolean) -> Unit,
-  onTap: () -> Unit
-) {
+private fun MonitorFileRow(item: FileItem) {
+  val context = LocalContext.current
   Row(
-    Modifier.fillMaxWidth().combinedClickable(
-      onClick = {
-        if (selectMode) onSelectToggle(!isSelected) else onTap()
-      },
-      onLongClick = onLongPress
-    ),
+    Modifier.fillMaxWidth().clickable { LinkUtils.openInFileManager(context, item.path) },
     verticalAlignment = Alignment.CenterVertically
   ) {
-    if (selectMode) {
-      Checkbox(checked = isSelected, onCheckedChange = onSelectToggle)
-      Spacer(Modifier.size(4.dp))
-    }
     MediaThumb(item.name, item.path, item.mimeType, item.isMedia, Modifier.size(44.dp))
     Spacer(Modifier.size(10.dp))
     Column(Modifier.weight(1f)) {
       Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-      Text(formatSize(item.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      MonoText(formatSize(item.size))
     }
   }
 }

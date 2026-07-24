@@ -6,17 +6,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -25,27 +23,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import java.io.File
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sortit.data.MonitorEntity
 import com.sortit.data.SortLogEntity
 import com.sortit.domain.ScanPathUseCase
 import com.sortit.ui.components.EmptyState
-import com.sortit.ui.components.MetricCard
-import com.sortit.ui.components.OneLinePath
+import com.sortit.ui.components.Kicker
+import com.sortit.ui.components.ManifestTally
+import com.sortit.ui.components.MonoText
 import com.sortit.ui.components.SectionCard
-import com.sortit.ui.components.StatusBadge
+import com.sortit.ui.components.StampBadge
+import com.sortit.ui.components.StampKind
+import com.sortit.ui.components.StubTicket
+import com.sortit.ui.components.TallyItem
 import com.sortit.ui.components.formatDate
 import com.sortit.util.LinkUtils
 import kotlinx.coroutines.Dispatchers
@@ -66,63 +62,41 @@ fun DashboardScreen(
   val active by vm.activeScan.collectAsState()
   val recent by vm.recentLogs.collectAsState()
 
-  LazyColumn(modifier = modifier, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+  LazyColumn(modifier = modifier, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
-      Text("Ringkasan", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-      Text("${templates.count { it.enabled }} rule aktif \u2022 ${monitors.count { it.enabled }} monitor aktif", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    item {
-      val context = LocalContext.current
-      var showTargetPicker by remember { mutableStateOf(false) }
-      Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        MetricCard("Dipindahkan", counts.moved.toString(), "file masuk folder target", Icons.Default.CheckCircle, Modifier.weight(1f)) {
-          showTargetPicker = true
-        }
-        MetricCard("Trash", counts.trashed.toString(), "file diamankan ke .sortit-trash", Icons.Default.Delete, Modifier.weight(1f)) {
-          LinkUtils.openInFileManager(context, com.sortit.repo.FileOps.TRASH_ROOT)
-        }
-      }
-      if (showTargetPicker) {
-        val targets = templates.map { it.targetTreeUri }.distinct().filter { it.isNotBlank() }
-        AlertDialog(
-          onDismissRequest = { showTargetPicker = false },
-          title = { Text("Pilih folder tujuan") },
-          text = {
-            if (targets.isEmpty()) {
-              Text("Belum ada rule dengan folder tujuan.")
-            } else {
-              Column { targets.forEach { path ->
-                Row(
-                  Modifier.fillMaxWidth().clickable {
-                    showTargetPicker = false
-                    LinkUtils.openInFileManager(context, path)
-                  }.padding(vertical = 10.dp),
-                  verticalAlignment = Alignment.CenterVertically
-                ) {
-                  Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                  Spacer(Modifier.size(10.dp))
-                  Text(path, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-              } }
-            }
-          },
-          confirmButton = { TextButton(onClick = { showTargetPicker = false }) { Text("Tutup") } }
+      Column {
+        Kicker("Beranda")
+        Spacer(Modifier.height(2.dp))
+        Text("Ringkasan", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+          "${templates.count { it.enabled }} rule aktif \u00b7 ${monitors.count { it.enabled }} monitor aktif",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant
         )
       }
     }
     item {
-      Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        MetricCard("Pending", pending.toString(), "file menunggu review", Icons.Default.PlayArrow, Modifier.weight(1f))
-        MetricCard("Gagal", counts.failed.toString(), "aksi gagal tercatat", Icons.Default.Warning, Modifier.weight(1f))
-      }
+      ManifestTally(
+        kicker = "Manifest hari ini",
+        items = listOf(
+          TallyItem(counts.moved.toString(), "Dipindahkan", LocalSortitColors.current.move),
+          TallyItem(counts.trashed.toString(), "Trash", LocalSortitColors.current.trash),
+          TallyItem(pending.toString(), "Pending", null),
+          TallyItem(counts.failed.toString(), "Gagal", LocalSortitColors.current.warn)
+        )
+      )
     }
     if (active != null && pending > 0) {
       item {
-        SectionCard(title = "Review belum selesai", subtitle = "Hasil scan terakhir masih menunggu tindakan.") {
+        SectionCard(
+          title = "Review belum selesai",
+          subtitle = "Hasil scan terakhir masih menunggu tindakan.",
+          accent = MaterialTheme.colorScheme.primary
+        ) {
           Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
               Text("${active?.totalFound ?: pending} file ditemukan", fontWeight = FontWeight.SemiBold)
-              Text("Dibuat ${formatDate(active?.createdAt ?: 0)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+              MonoText("Dibuat ${formatDate(active?.createdAt ?: 0)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Button(onClick = { active?.let { scanVm.continuePending(it) } }) { Text("Lanjutkan") }
           }
@@ -145,27 +119,17 @@ fun DashboardScreen(
         }
       }
     }
-    item {
-      SectionCard(title = "Monitor path", subtitle = "Status readable path yang dipantau.") {
-        if (monitors.isEmpty()) {
-          EmptyState(Icons.Default.Folder, "Belum ada monitor", "Tambah path seperti WA Statuses untuk melihat file terbaru.")
-        } else {
-          Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            monitors.take(4).forEach { MonitorStatusLine(it) }
-          }
-        }
-      }
+    item { Kicker("Monitor path", modifier = Modifier.padding(top = 2.dp)) }
+    if (monitors.isEmpty()) {
+      item { EmptyState(Icons.Default.Folder, "Belum ada monitor", "Tambah path seperti WA Statuses untuk melihat file terbaru.") }
+    } else {
+      items(monitors.take(4)) { MonitorStatusLine(it) }
     }
-    item {
-      SectionCard(title = "Aktivitas terbaru", subtitle = "Log move/trash terakhir.") {
-        if (recent.isEmpty()) {
-          Text("Belum ada aktivitas.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        } else {
-          Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            recent.forEach { LogRow(it) }
-          }
-        }
-      }
+    item { Kicker("Aktivitas terbaru", modifier = Modifier.padding(top = 2.dp)) }
+    if (recent.isEmpty()) {
+      item { Text("Belum ada aktivitas.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 4.dp)) }
+    } else {
+      items(recent) { LogRow(it) }
     }
   }
 }
@@ -176,18 +140,20 @@ private fun MonitorStatusLine(m: MonitorEntity) {
   val inspection by produceState<ScanPathUseCase.PathInspection?>(initialValue = null, m.path, m.enabled) {
     value = withContext(Dispatchers.IO) { if (m.enabled) scan.inspect(m.path) else null }
   }
-  Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-    Column(Modifier.weight(1f)) {
-      Text(m.name, fontWeight = FontWeight.SemiBold)
-      OneLinePath(m.path)
+  StubTicket(
+    title = m.name,
+    path = m.path,
+    stub = {
+      if (!m.enabled) {
+        StampBadge("Nonaktif", StampKind.PENDING)
+      } else {
+        val insp = inspection
+        if (insp == null) StampBadge("Cek", StampKind.PENDING)
+        else if (insp.readable) StampBadge("OK \u00b7 ${insp.fileCount}", StampKind.MOVE)
+        else StampBadge("Error", StampKind.WARN)
+      }
     }
-    if (!m.enabled) StatusBadge("Nonaktif", ok = null)
-    else {
-      val insp = inspection
-      if (insp == null) StatusBadge("Cek...", ok = null)
-      else StatusBadge(if (insp.readable) "Readable \u2022 ${insp.fileCount}" else "Tidak readable", ok = insp.readable)
-    }
-  }
+  )
 }
 
 @Composable
@@ -195,17 +161,20 @@ private fun LogRow(log: SortLogEntity) {
   val context = LocalContext.current
   val ok = log.status == "OK"
   val trashed = log.dstPath.contains("/.sortit-trash/")
-  val clickable = ok && log.dstPath.isNotBlank()
-  Row(
-    Modifier.fillMaxWidth().then(if (clickable) Modifier.clickable { LinkUtils.openInFileManager(context, log.dstPath) } else Modifier),
-    verticalAlignment = Alignment.CenterVertically
-  ) {
-    StatusBadge(if (ok) (if (trashed) "TRASH" else "MOVE") else "FAIL", ok = ok)
-    Spacer(Modifier.size(10.dp))
-    Column(Modifier.weight(1f)) {
-      Text(log.fileName, fontWeight = FontWeight.SemiBold, maxLines = 1)
-      OneLinePath(if (ok) "${log.srcPath} \u2192 ${log.dstPath}" else log.srcPath)
+  val isClickable = ok && log.dstPath.isNotBlank()
+  val kind = if (!ok) StampKind.WARN else if (trashed) StampKind.TRASH else StampKind.MOVE
+  val label = if (!ok) "Fail" else if (trashed) "Trash" else "Move"
+
+  StubTicket(
+    title = log.fileName,
+    modifier = if (isClickable) Modifier.clickable { LinkUtils.openInFileManager(context, log.dstPath) } else Modifier,
+    path = if (ok) "${log.srcPath} \u2192 ${log.dstPath}" else log.srcPath,
+    stub = {
+      Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        StampBadge(label, kind)
+        Spacer(Modifier.height(4.dp))
+        MonoText(text = formatDate(log.timestamp), style = MaterialTheme.typography.labelSmall)
+      }
     }
-    Text(formatDate(log.timestamp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-  }
+  )
 }
