@@ -76,7 +76,6 @@ class FileScannerExcludeTest {
         val out = FileScanner.scanTemplate(tpl, ops, setOf("/b"), mutableSetOf())
         assertEquals(listOf("/a/keep.txt"), out.map { it.item.path })
     }
-}
 
     @Test
     fun `matchesMeta size and age`() {
@@ -86,12 +85,9 @@ class FileScannerExcludeTest {
             minSizeBytes = 100, maxSizeBytes = 1000, maxAgeDays = 2
         )
         val now = 10_000_000L
-        // too small
         assertFalse(FileScanner.matchesMeta(base, 50, now - 10L * 86_400_000L, now))
-        // too big
         assertFalse(FileScanner.matchesMeta(base, 5000, now - 10L * 86_400_000L, now))
-        // too new
         assertFalse(FileScanner.matchesMeta(base, 200, now - 1L * 86_400_000L, now))
-        // ok
         assertTrue(FileScanner.matchesMeta(base, 200, now - 5L * 86_400_000L, now))
     }
+}
