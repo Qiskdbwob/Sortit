@@ -499,3 +499,85 @@ private fun AddMonitorDialog(onDismiss: () -> Unit, onAdd: (String, String) -> U
     dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } }
   )
 }
+
+@Composable
+private fun EditMonitorDialog(
+  initial: MonitorEntity,
+  onDismiss: () -> Unit,
+  onSave: (String, String) -> Unit
+) {
+  val context = LocalContext.current
+  var name by remember { mutableStateOf(initial.name) }
+  val initialPaths = remember(initial.path) { splitMonitorPaths(initial.path) }
+  var path by remember { mutableStateOf(initialPaths.firstOrNull() ?: "") }
+  var extraPaths by remember { mutableStateOf(initialPaths.drop(1)) }
+  var error by remember { mutableStateOf<String?>(null) }
+
+  fun persist(uri: Uri) = runCatching {
+    context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+  }
+  val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+    uri?.let {
+      persist(it)
+      val picked = StoragePaths.uriToPath(it) ?: it.toString()
+      if (path.isBlank()) path = picked
+      else if (picked !in extraPaths && picked != path) extraPaths = extraPaths + picked
+    }
+  }
+
+  fun validate(): String? {
+    if (name.trim().isBlank()) return "Nama monitor wajib diisi."
+    val all = (listOf(path.trim()) + extraPaths).map { it.trim() }.filter { it.isNotBlank() }
+    if (all.isEmpty()) return "Minimal 1 path wajib diisi."
+    all.forEach { pth ->
+      if (pth.startsWith("content://")) return "URI SAF non-primary belum didukung: $pth"
+      if (SystemExcludes.isSystemPath(pth)) return "Path sistem tidak boleh dimonitor: $pth"
+      val f = File(pth)
+      if (!f.exists() || !f.isDirectory || !f.canRead()) return "Path tidak readable: $pth"
+    }
+    return null
+  }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Edit pemantau path") },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedTextField(
+          value = name,
+          onValueChange = { name = it; error = null },
+          label = { Text("Nama") },
+          singleLine = true
+        )
+        OutlinedTextField(
+          value = path,
+          onValueChange = { path = it; error = null },
+          label = { Text("Path utama") }
+        )
+        if (extraPaths.isNotEmpty()) {
+          Text("Folder tambahan (${extraPaths.size}):", style = MaterialTheme.typography.labelMedium)
+          extraPaths.forEach { MonoText(it, style = MaterialTheme.typography.bodySmall) }
+        }
+        OutlinedButton(onClick = { launcher.launch(null) }) {
+          Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
+          Spacer(Modifier.size(6.dp))
+          Text("Tambah / ganti folder")
+        }
+        if (error != null) {
+          Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+      }
+    },
+    confirmButton = {
+      Button(onClick = {
+        val e = validate()
+        if (e != null) error = e
+        else {
+          val all = (listOf(path.trim()) + extraPaths).map { it.trim() }.filter { it.isNotBlank() }
+          onSave(name.trim(), joinMonitorPaths(all))
+        }
+      }) { Text("Simpan") }
+    },
+    dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } }
+  )
+}
