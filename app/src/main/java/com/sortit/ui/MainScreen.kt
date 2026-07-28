@@ -51,6 +51,18 @@ import androidx.compose.ui.unit.sp
 import com.sortit.SortitApplication
 import com.sortit.data.TemplateEntity
 import com.sortit.util.StorageAccess
+import kotlinx.coroutines.launch
+import com.sortit.util.SystemExcludes
+import com.sortit.util.StoragePaths
+import com.sortit.repo.ExcludeRepository
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.net.Uri
+import android.content.Intent
 
 @Composable
 fun MainScreen(
@@ -230,15 +242,69 @@ private fun SettingsDialog(
 ) {
   val context = LocalContext.current
   val app = context.applicationContext as SortitApplication
+  val scope = rememberCoroutineScope()
+  val excludeRepo = remember { ExcludeRepository(app.db) }
   var dynamicColor by remember { mutableStateOf(app.prefs.useDynamicColor) }
   var mode by remember { mutableStateOf(themeMode) }
   var retentionDays by remember { mutableIntStateOf(app.prefs.trashRetentionDays) }
+  var globalExcludes by remember { mutableStateOf<List<String>>(emptyList()) }
+  var excludeError by remember { mutableStateOf<String?>(null) }
+  var reloadTick by remember { mutableIntStateOf(0) }
+
+  fun reloadExcludes() {
+    scope.launch {
+      globalExcludes = excludeRepo.globalPatterns().map { it.trimEnd('/') }.distinct().sorted()
+    }
+  }
+
+  LaunchedEffect(reloadTick) { reloadExcludes() }
+
+  fun persistUri(uri: Uri) = runCatching {
+    context.contentResolver.takePersistableUriPermission(
+      uri,
+      Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+    )
+  }
+
+  fun addExcludePath(raw: String) {
+    val path = raw.trim().trimEnd('/')
+    excludeError = null
+    when {
+      path.isBlank() -> excludeError = "Path kosong."
+      path.startsWith("content://") -> excludeError = "URI SAF non-primary belum didukung."
+      SystemExcludes.isSystemPath(path) -> excludeError = "Path sistem sudah dilindungi otomatis."
+      else -> scope.launch {
+        excludeRepo.addGlobal(path)
+        reloadTick++
+      }
+    }
+  }
+
+  val excludeFolderLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.OpenDocumentTree()
+  ) { uri ->
+    uri?.let {
+      persistUri(it)
+      val picked = StoragePaths.uriToPath(it)
+      if (picked == null) {
+        excludeError = "URI SAF non-primary belum didukung."
+      } else {
+        addExcludePath(picked)
+      }
+    }
+  }
 
   AlertDialog(
     onDismissRequest = onDismiss,
     title = { Text("Pengaturan") },
     text = {
-      Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+      Column(
+        Modifier
+          .fillMaxWidth()
+          .height(480.dp)
+          .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+      ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Text("Mode tampilan", fontWeight = FontWeight.SemiBold)
           Text(
@@ -301,12 +367,57 @@ private fun SettingsDialog(
             Text("90 hari", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
         }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text("Path dikecualikan (global)", fontWeight = FontWeight.SemiBold)
+          Text(
+            "Berlaku semua scan & aksi. Folder + isinya tidak ikut discan. Override rule.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+          OutlinedButton(onClick = { excludeFolderLauncher.launch(null) }) {
+            Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.size(6.dp))
+            Text("Tambah folder")
+          }
+          excludeError?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+          }
+          if (globalExcludes.isEmpty()) {
+            Text(
+              "Belum ada. Contoh: Download, folder kerja, backup.",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+          } else {
+            globalExcludes.forEach { path ->
+              Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+              ) {
+                Text(
+                  path,
+                  modifier = Modifier.weight(1f),
+                  style = MaterialTheme.typography.bodySmall,
+                  fontFamily = FontFamily.Monospace
+                )
+                IconButton(onClick = {
+                  scope.launch {
+                    excludeRepo.removeGlobal(path)
+                    reloadTick++
+                  }
+                }) {
+                  Icon(Icons.Default.Close, contentDescription = "Hapus exclude")
+                }
+              }
+            }
+          }
+        }
       }
     },
     confirmButton = { TextButton(onClick = onDismiss) { Text("Tutup") } }
   )
 }
-
 
 @Composable
 private fun ScanLauncherDialog(

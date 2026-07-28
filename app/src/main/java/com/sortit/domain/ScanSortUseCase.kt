@@ -38,7 +38,10 @@ class ScanSortUseCase(private val fileOps: FileOps) {
             if (exts.isEmpty()) continue
 
             for (root in FileScanner.resolveRoots(template)) {
-                if (SystemExcludes.isSystemPath(root) || !fileOps.isReadableDir(root)) continue
+                if (SystemExcludes.isSystemPath(root) ||
+                    FileScanner.isRootExcluded(root, excludePatterns) ||
+                    !fileOps.isReadableDir(root)
+                ) continue
                 val seq = try { fileOps.walkDeep(root) } catch (_: Exception) { emptySequence() }
                 try {
                     seq.forEach { f ->
@@ -46,7 +49,7 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                         val path = f.absolutePath
                         val matches = !SystemExcludes.isSystemPath(path) &&
                                 com.sortit.util.matchesExtension(f.name, exts) &&
-                                !isExcluded(path, f.name, excludePatterns) &&
+                                !FileScanner.isExcluded(path, f.name, excludePatterns) &&
                                 seen.add(path)
                         if (matches) {
                             found++
@@ -62,7 +65,6 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                                     isMedia = mime?.startsWith("image/") == true || mime?.startsWith("video/") == true
                                 )
                             )
-                            // Emit setiap file supaya UI update instan
                             emit(Progress(scanned, found, path))
                         } else {
                             emit(Progress(scanned, found, path))
@@ -75,7 +77,4 @@ class ScanSortUseCase(private val fileOps: FileOps) {
         }
         emit(Progress(scanned, found, ""))
     }.flowOn(Dispatchers.IO)
-
-    private fun isExcluded(path: String, name: String, patterns: Set<String>): Boolean =
-        patterns.any { path.startsWith(it) || name == it }
 }

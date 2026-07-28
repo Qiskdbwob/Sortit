@@ -8,3 +8,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# secrets
+.secrets/
+*.jks
+local.properties

@@ -154,10 +154,11 @@ class ScanViewModel(
     fun reset() { _state.value = ScanUiState.Idle }
 
     private suspend fun startScan(templates: List<TemplateEntity>) {
-        val excludes = templates.flatMap { excludeRepo.patternsFor(it.id) }.distinct()
+        // Global exclude (templateId=0) + per-rule; global menang di filter yang sama.
+        val excludes = excludeRepo.patternsForScan(templates.map { it.id })
         val candidates = mutableListOf<PreviewSortUseCase.ScannedFile>()
         _state.value = ScanUiState.Scanning(0, 0, "")
-        scan.executeMany(templates, excludes.toSet()) { templateId, item ->
+        scan.executeMany(templates, excludes) { templateId, item ->
             candidates.add(PreviewSortUseCase.ScannedFile(templateId, item))
         }.collect { p ->
             _state.value = ScanUiState.Scanning(p.scanned, p.found, p.currentPath)
@@ -181,7 +182,7 @@ class ScanViewModel(
                 status = "PENDING"
             )
         }
-        val sessionId = scanRepo.createSession(templates, excludes, items)
+        val sessionId = scanRepo.createSession(templates, excludes.toList(), items)
         val saved = scanRepo.itemsForSession(sessionId)
         _state.value = ScanUiState.Preview(sessionId, saved, templates.associateBy { it.id })
     }

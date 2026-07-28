@@ -7,7 +7,7 @@ import com.sortit.util.matchesExtension
 import com.sortit.util.parseExtensions
 
 // Shared scan engine: resolve root paths, filter system paths,
-// filter by extension, filter by exclude patterns.
+// filter by extension, filter by exclude patterns (global + per-rule).
 // Dipakai oleh ScanSortUseCase (Flow) dan PreviewSortUseCase (List).
 object FileScanner {
 
@@ -26,6 +26,34 @@ object FileScanner {
                 .filter { it.isNotBlank() }
         }
 
+    /**
+     * Pattern match:
+     * - path prefix (folder + anak): /a/b cocok /a/b dan /a/b/c
+     * - exact file name: "skip.txt"
+     */
+    fun isExcluded(path: String, name: String, patterns: Set<String>): Boolean {
+        if (patterns.isEmpty()) return false
+        val p = path.trimEnd('/')
+        return patterns.any { raw ->
+            val pat = raw.trim().trimEnd('/')
+            if (pat.isBlank()) return@any false
+            p == pat || p.startsWith("$pat/") || name == raw || name == pat
+        }
+    }
+
+    /** Root tidak perlu di-walk jika dirinya (atau ancestor) di-exclude. */
+    fun isRootExcluded(root: String, patterns: Set<String>): Boolean {
+        if (patterns.isEmpty()) return false
+        val r = root.trimEnd('/')
+        return patterns.any { raw ->
+            val pat = raw.trim().trimEnd('/')
+            if (pat.isBlank()) return@any false
+            // root sama / di bawah exclude, atau exclude di dalam root (tetap walk, filter file)
+            // skip walk hanya jika root sendiri excluded
+            r == pat || r.startsWith("$pat/")
+        }
+    }
+
     /** Scan satu template, return semua file kandidat. */
     fun scanTemplate(
         template: TemplateEntity,
@@ -38,7 +66,8 @@ object FileScanner {
 
         val out = mutableListOf<Candidate>()
         for (root in resolveRoots(template)) {
-            if (SystemExcludes.isSystemPath(root) || !fileOps.isReadableDir(root)) continue
+            if (SystemExcludes.isSystemPath(root) || isRootExcluded(root, excludePatterns)) continue
+            if (!fileOps.isReadableDir(root)) continue
             val seq = try { fileOps.walkDeep(root) } catch (_: Exception) { emptySequence() }
             try {
                 seq.filter { !SystemExcludes.isSystemPath(it.absolutePath) }
@@ -69,7 +98,4 @@ object FileScanner {
         }
         return out
     }
-
-    private fun isExcluded(path: String, name: String, patterns: Set<String>): Boolean =
-        patterns.any { path.startsWith(it) || name == it }
 }
