@@ -15,6 +15,11 @@ interface FileOps {
   fun mkdirs(dir: String): Boolean
   fun isReadableDir(path: String): Boolean
   fun childCount(path: String): Int
+  /** Pindah file ke folder tujuan (bukan sub-ext). Return path baru atau null. */
+  fun restore(src: String, dstDir: String): String?
+  /** List semua file di trash (rekursif dangkal per subfolder ext). */
+  fun listTrashFiles(): List<java.io.File>
+  fun deleteFile(path: String): Boolean
 
   companion object {
     const val TRASH_ROOT: String = "/storage/emulated/0/Sortit/.sortit-trash"
@@ -105,6 +110,27 @@ class RealFileOps : FileOps {
   }
 
   override fun childCount(path: String): Int = listFiles(path).size
+
+
+  override fun restore(src: String, dstDir: String): String? = move(src, dstDir)
+
+  override fun listTrashFiles(): List<File> {
+    val root = File(FileOps.TRASH_ROOT)
+    if (!root.isDirectory) return emptyList()
+    val out = mutableListOf<File>()
+    root.listFiles()?.forEach { child ->
+      if (child.isFile) out.add(child)
+      else if (child.isDirectory) {
+        child.listFiles()?.filter { it.isFile }?.let { out.addAll(it) }
+      }
+    }
+    return out.sortedByDescending { it.lastModified() }
+  }
+
+  override fun deleteFile(path: String): Boolean = try {
+    val f = File(path)
+    f.exists() && f.isFile && f.delete()
+  } catch (_: Exception) { false }
 
   private fun copyThenDelete(src: File, dst: File): String? {
     return try {

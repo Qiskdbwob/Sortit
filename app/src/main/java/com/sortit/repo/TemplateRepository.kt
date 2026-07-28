@@ -12,4 +12,8 @@ class TemplateRepository(private val db: AppDatabase) {
     suspend fun update(t: TemplateEntity) = db.templateDao().update(t)
     suspend fun delete(t: TemplateEntity) = db.templateDao().delete(t)
     suspend fun countDefaults(): Int = db.templateDao().countDefaults()
+    suspend fun getAllOnce(): List<com.sortit.data.TemplateEntity> = db.templateDao().getAllOnce()
+    suspend fun enabledAuto(): List<com.sortit.data.TemplateEntity> =
+        getAllOnce().filter { it.enabled && it.autoEnabled }
 }
+

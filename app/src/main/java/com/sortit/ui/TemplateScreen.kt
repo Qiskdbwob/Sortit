@@ -11,11 +11,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
@@ -37,6 +41,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,13 +53,13 @@ import com.sortit.ui.components.DashedDivider
 import com.sortit.ui.components.EmptyState
 import com.sortit.ui.components.Kicker
 import com.sortit.ui.components.MonoText
-import com.sortit.ui.components.OneLinePath
 import com.sortit.ui.components.TagChip
 import com.sortit.ui.components.Ticket
 import com.sortit.util.StoragePaths
 import com.sortit.util.SystemExcludes
 import com.sortit.util.parseExtensions
 import java.io.File
+import kotlinx.coroutines.launch
 
 @Composable
 fun RulesScreen(
@@ -81,7 +86,7 @@ fun RulesScreen(
           Kicker("Rules")
           Spacer(Modifier.height(4.dp))
           Text("Rules", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-          Text("${list.count { it.enabled }} aktif \u00b7 ${list.size} total", color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text("${list.count { it.enabled }} aktif · ${list.size} total", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IconButton(onClick = { editing = null; showEditor = true }) {
           Icon(Icons.Default.Add, contentDescription = "Rule baru")
@@ -124,10 +129,28 @@ fun RulesScreen(
     RuleEditorDialog(
       initial = editing,
       existing = list,
+      loadExcludes = { id -> vm.excludesFor(id) },
       onDismiss = { showEditor = false },
-      onSave = { name, ext, target, mode, dirs ->
-        if (editing == null) vm.add(name, ext, target, mode, dirs)
-        else vm.update(editing!!.copy(name = name, extensions = ext, targetTreeUri = target, sourceMode = mode, sourceDirs = dirs))
+      onSave = { name, ext, target, mode, dirs, minB, maxB, age, auto, autoAct, excludes ->
+        if (editing == null) {
+          vm.add(name, ext, target, mode, dirs, minB, maxB, age, auto, autoAct, excludes)
+        } else {
+          vm.update(
+            editing!!.copy(
+              name = name,
+              extensions = ext,
+              targetTreeUri = target,
+              sourceMode = mode,
+              sourceDirs = dirs,
+              minSizeBytes = minB,
+              maxSizeBytes = maxB,
+              maxAgeDays = age,
+              autoEnabled = auto,
+              autoAction = autoAct
+            ),
+            excludePaths = excludes
+          )
+        }
         showEditor = false
       }
     )
@@ -162,9 +185,13 @@ private fun RuleCard(
               Spacer(Modifier.size(8.dp))
               TagChip("Default")
             }
+            if (t.autoEnabled) {
+              Spacer(Modifier.size(8.dp))
+              TagChip("Auto")
+            }
           }
           MonoText(
-            text = t.extensions.replace(",", " \u00b7 "),
+            text = t.extensions.replace(",", " · "),
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold,
             style = MaterialTheme.typography.bodyMedium
@@ -173,9 +200,18 @@ private fun RuleCard(
         Switch(checked = t.enabled, onCheckedChange = onToggle)
       }
       Column {
-        MonoText("Target \u2014 ${StoragePaths.displayPath(t.targetTreeUri)}")
+        MonoText("Target — ${StoragePaths.displayPath(t.targetTreeUri)}")
         Text(
-          if (t.sourceMode == "ALL") "Sumber: Scan semua storage" else "Sumber: ${t.sourceDirs ?: "-"}",
+          buildString {
+            append(if (t.sourceMode == "ALL") "Sumber: semua storage" else "Sumber: ${t.sourceDirs ?: "-"}")
+            if (t.minSizeBytes > 0 || t.maxSizeBytes > 0) {
+              append(" · size ")
+              if (t.minSizeBytes > 0) append("≥${t.minSizeBytes}")
+              if (t.maxSizeBytes > 0) append("≤${t.maxSizeBytes}")
+            }
+            if (t.maxAgeDays > 0) append(" · umur ≥${t.maxAgeDays}h")
+            if (t.autoEnabled) append(" · auto ${t.autoAction}")
+          },
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -199,30 +235,63 @@ private fun RuleCard(
 private fun RuleEditorDialog(
   initial: TemplateEntity?,
   existing: List<TemplateEntity>,
+  loadExcludes: suspend (Long) -> List<String>,
   onDismiss: () -> Unit,
-  onSave: (name: String, extensions: String, target: String, mode: String, dirs: String?) -> Unit
+  onSave: (
+    name: String,
+    extensions: String,
+    target: String,
+    mode: String,
+    dirs: String?,
+    minSizeBytes: Long,
+    maxSizeBytes: Long,
+    maxAgeDays: Int,
+    autoEnabled: Boolean,
+    autoAction: String,
+    excludePaths: List<String>
+  ) -> Unit
 ) {
   val context = LocalContext.current
+  val scope = rememberCoroutineScope()
   var name by remember { mutableStateOf(initial?.name ?: "") }
   var ext by remember { mutableStateOf(initial?.extensions ?: "") }
   var target by remember { mutableStateOf(initial?.targetTreeUri ?: "/storage/emulated/0/Sortit/") }
   var mode by remember { mutableStateOf(initial?.sourceMode ?: "ALL") }
   var dirs by remember { mutableStateOf(initial?.sourceDirs ?: "") }
+  var minMb by remember { mutableStateOf(if ((initial?.minSizeBytes ?: 0) > 0) ((initial!!.minSizeBytes) / (1024 * 1024)).toString() else "") }
+  var maxMb by remember { mutableStateOf(if ((initial?.maxSizeBytes ?: 0) > 0) ((initial!!.maxSizeBytes) / (1024 * 1024)).toString() else "") }
+  var ageDays by remember { mutableStateOf(if ((initial?.maxAgeDays ?: 0) > 0) initial!!.maxAgeDays.toString() else "") }
+  var autoEnabled by remember { mutableStateOf(initial?.autoEnabled ?: false) }
+  var autoAction by remember { mutableStateOf(initial?.autoAction ?: "MOVE") }
+  var excludes by remember { mutableStateOf<List<String>>(emptyList()) }
   var error by remember { mutableStateOf<String?>(null) }
 
+  LaunchedEffect(initial?.id) {
+    excludes = if (initial != null) loadExcludes(initial.id) else emptyList()
+  }
+
   fun persist(uri: Uri) = runCatching {
-    context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+    context.contentResolver.takePersistableUriPermission(
+      uri,
+      Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+    )
   }
 
   val targetLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
     uri?.let { persist(it); target = StoragePaths.uriToPath(it) ?: it.toString() }
   }
-
   val dirLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
     uri?.let {
       persist(it)
       val picked = StoragePaths.uriToPath(it) ?: it.toString()
       dirs = (dirs.split(",") + picked).map { it.trim() }.filter { it.isNotBlank() }.distinct().joinToString(",")
+    }
+  }
+  val excludeLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+    uri?.let {
+      persist(it)
+      val picked = (StoragePaths.uriToPath(it) ?: return@let).trimEnd('/')
+      if (picked.isNotBlank() && picked !in excludes) excludes = excludes + picked
     }
   }
 
@@ -241,12 +310,21 @@ private fun RuleEditorDialog(
       val list = dirs.split(",").map { it.trim() }.filter { it.isNotBlank() }
       if (list.isEmpty()) return "Mode Folder Pilihan butuh minimal 1 path."
       list.forEach { p ->
-        if (p.startsWith("content://")) return "URI SAF non-primary belum didukung untuk scan: $p"
+        if (p.startsWith("content://")) return "URI SAF non-primary belum didukung: $p"
         if (SystemExcludes.isSystemPath(p)) return "Path sumber dikecualikan sistem: $p"
         val f = File(p)
         if (!f.exists() || !f.isDirectory || !f.canRead()) return "Path sumber tidak readable: $p"
       }
     }
+    if (autoEnabled && mode == "ALL") {
+      return "Auto rule wajib mode Folder Pilihan (aman). Hindari auto di seluruh storage."
+    }
+    val minV = minMb.trim().toLongOrNull()
+    val maxV = maxMb.trim().toLongOrNull()
+    if (minMb.isNotBlank() && minV == null) return "Min size MB tidak valid."
+    if (maxMb.isNotBlank() && maxV == null) return "Max size MB tidak valid."
+    if (minV != null && maxV != null && minV > maxV) return "Min size > max size."
+    if (ageDays.isNotBlank() && ageDays.toIntOrNull() == null) return "Umur (hari) tidak valid."
     return null
   }
 
@@ -254,18 +332,24 @@ private fun RuleEditorDialog(
     onDismissRequest = onDismiss,
     title = { Text(if (initial == null) "Rule baru" else "Edit rule") },
     text = {
-      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      Column(
+        Modifier
+          .fillMaxWidth()
+          .heightIn(max = 520.dp)
+          .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+      ) {
         OutlinedTextField(value = name, onValueChange = { name = it; error = null }, label = { Text("Nama") }, singleLine = true)
         OutlinedTextField(value = ext, onValueChange = { ext = it; error = null }, label = { Text("Ekstensi (txt,bak,tmp)") }, singleLine = true)
         OutlinedTextField(value = target, onValueChange = { target = it; error = null }, label = { Text("Folder tujuan") })
         OutlinedButton(onClick = { targetLauncher.launch(null) }) {
           Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
           Spacer(Modifier.size(6.dp))
-          Text("Pilih folder")
+          Text("Pilih folder tujuan")
         }
         Text("Sumber scan:", fontWeight = FontWeight.SemiBold)
         Row(verticalAlignment = Alignment.CenterVertically) {
-          RadioButton(selected = mode == "ALL", onClick = { mode = "ALL" })
+          RadioButton(selected = mode == "ALL", onClick = { mode = "ALL"; if (autoEnabled) autoEnabled = false })
           Text("Semua storage")
           Spacer(Modifier.size(12.dp))
           RadioButton(selected = mode == "FOLDERS", onClick = { mode = "FOLDERS" })
@@ -281,11 +365,83 @@ private fun RuleEditorDialog(
             Text("Sumber: $dirs", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
         }
+        Text("Filter size / umur (opsional)", fontWeight = FontWeight.SemiBold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          OutlinedTextField(
+            value = minMb, onValueChange = { minMb = it; error = null },
+            label = { Text("Min MB") }, singleLine = true, modifier = Modifier.weight(1f)
+          )
+          OutlinedTextField(
+            value = maxMb, onValueChange = { maxMb = it; error = null },
+            label = { Text("Max MB") }, singleLine = true, modifier = Modifier.weight(1f)
+          )
+        }
+        OutlinedTextField(
+          value = ageDays, onValueChange = { ageDays = it; error = null },
+          label = { Text("Umur min (hari) — file lebih tua dari N hari") },
+          singleLine = true
+        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+          Column(Modifier.weight(1f)) {
+            Text("Otomatis", fontWeight = FontWeight.SemiBold)
+            Text(
+              "File di folder sumber langsung diproses tanpa scan/review. Wajib Folder Pilihan.",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+          }
+          Switch(
+            checked = autoEnabled,
+            onCheckedChange = {
+              if (it && mode != "FOLDERS") {
+                error = "Aktifkan Folder Pilihan dulu untuk auto."
+              } else {
+                autoEnabled = it; error = null
+              }
+            }
+          )
+        }
+        if (autoEnabled) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(selected = autoAction == "MOVE", onClick = { autoAction = "MOVE" })
+            Text("Pindah")
+            Spacer(Modifier.size(12.dp))
+            RadioButton(selected = autoAction == "TRASH", onClick = { autoAction = "TRASH" })
+            Text("Trash")
+          }
+        }
+        Text("Kecualikan path (per-rule)", fontWeight = FontWeight.SemiBold)
+        OutlinedButton(onClick = { excludeLauncher.launch(null) }) {
+          Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
+          Spacer(Modifier.size(6.dp))
+          Text("Tambah path exclude")
+        }
+        excludes.forEach { p ->
+          Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(p, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+            IconButton(onClick = { excludes = excludes - p }) {
+              Icon(Icons.Default.Close, contentDescription = "Hapus")
+            }
+          }
+        }
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
       }
     },
     confirmButton = {
-      Button(onClick = { val e = validate(); if (e != null) error = e else onSave(name.trim(), ext.trim(), target.trim(), mode, dirs.trim().ifBlank { null }) }) { Text("Simpan") }
+      Button(onClick = {
+        val e = validate()
+        if (e != null) error = e
+        else {
+          val minB = minMb.trim().toLongOrNull()?.times(1024 * 1024) ?: 0L
+          val maxB = maxMb.trim().toLongOrNull()?.times(1024 * 1024) ?: 0L
+          val age = ageDays.trim().toIntOrNull() ?: 0
+          onSave(
+            name.trim(), ext.trim(), target.trim(), mode,
+            dirs.trim().ifBlank { null },
+            minB, maxB, age, autoEnabled, autoAction, excludes
+          )
+        }
+      }) { Text("Simpan") }
     },
     dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } }
   )

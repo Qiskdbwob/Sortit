@@ -6,9 +6,7 @@ import com.sortit.util.SystemExcludes
 import com.sortit.util.matchesExtension
 import com.sortit.util.parseExtensions
 
-// Shared scan engine: resolve root paths, filter system paths,
-// filter by extension, filter by exclude patterns (global + per-rule).
-// Dipakai oleh ScanSortUseCase (Flow) dan PreviewSortUseCase (List).
+// Shared scan engine: roots, system/global/per-rule exclude, extension, size, age.
 object FileScanner {
 
     data class Candidate(
@@ -16,7 +14,6 @@ object FileScanner {
         val item: FileItem
     )
 
-    /** Resolve root paths dari template. */
     fun resolveRoots(template: TemplateEntity): List<String> =
         when (template.sourceMode) {
             "ALL" -> listOf("/storage/emulated/0")
@@ -26,11 +23,6 @@ object FileScanner {
                 .filter { it.isNotBlank() }
         }
 
-    /**
-     * Pattern match:
-     * - path prefix (folder + anak): /a/b cocok /a/b dan /a/b/c
-     * - exact file name: "skip.txt"
-     */
     fun isExcluded(path: String, name: String, patterns: Set<String>): Boolean {
         if (patterns.isEmpty()) return false
         val p = path.trimEnd('/')
@@ -41,20 +33,28 @@ object FileScanner {
         }
     }
 
-    /** Root tidak perlu di-walk jika dirinya (atau ancestor) di-exclude. */
     fun isRootExcluded(root: String, patterns: Set<String>): Boolean {
         if (patterns.isEmpty()) return false
         val r = root.trimEnd('/')
         return patterns.any { raw ->
             val pat = raw.trim().trimEnd('/')
             if (pat.isBlank()) return@any false
-            // root sama / di bawah exclude, atau exclude di dalam root (tetap walk, filter file)
-            // skip walk hanya jika root sendiri excluded
             r == pat || r.startsWith("$pat/")
         }
     }
 
-    /** Scan satu template, return semua file kandidat. */
+    /** Size + age filters from rule. maxAgeDays = only files older than N days. */
+    fun matchesMeta(template: TemplateEntity, size: Long, lastModified: Long, now: Long = System.currentTimeMillis()): Boolean {
+        if (template.minSizeBytes > 0 && size < template.minSizeBytes) return false
+        if (template.maxSizeBytes > 0 && size > template.maxSizeBytes) return false
+        if (template.maxAgeDays > 0) {
+            val ageMs = now - lastModified
+            val needMs = template.maxAgeDays.toLong() * 86_400_000L
+            if (ageMs < needMs) return false
+        }
+        return true
+    }
+
     fun scanTemplate(
         template: TemplateEntity,
         fileOps: FileOps,
@@ -63,6 +63,7 @@ object FileScanner {
     ): List<Candidate> {
         val exts = parseExtensions(template.extensions)
         if (exts.isEmpty()) return emptyList()
+        val now = System.currentTimeMillis()
 
         val out = mutableListOf<Candidate>()
         for (root in resolveRoots(template)) {
@@ -73,6 +74,7 @@ object FileScanner {
                 seq.filter { !SystemExcludes.isSystemPath(it.absolutePath) }
                     .filter { matchesExtension(it.name, exts) }
                     .filter { !isExcluded(it.absolutePath, it.name, excludePatterns) }
+                    .filter { matchesMeta(template, it.length(), it.lastModified(), now) }
                     .forEach { f ->
                         if (seen.add(f.absolutePath)) {
                             val mime = fileOps.mimeOf(f)
@@ -93,7 +95,6 @@ object FileScanner {
                         }
                     }
             } catch (_: Exception) {
-                // Folder hilang/permission berubah: skip root ini
             }
         }
         return out

@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.sortit.domain.AutoApplyUseCase
 import com.sortit.domain.ScanSortUseCase
 import com.sortit.domain.SortFilesUseCase
 import com.sortit.repo.ExcludeRepository
@@ -20,6 +21,7 @@ import com.sortit.repo.ScanSessionRepository
 import com.sortit.repo.SortLogRepository
 import com.sortit.repo.TemplateRepository
 import com.sortit.ui.DashboardViewModel
+import com.sortit.ui.HistoryViewModel
 import com.sortit.ui.MainScreen
 import com.sortit.ui.MonitorViewModel
 import com.sortit.ui.ScanViewModel
@@ -33,6 +35,10 @@ class MainActivity : ComponentActivity() {
     private val excludeRepo by lazy { ExcludeRepository((application as SortitApplication).db) }
     private val logRepo by lazy { SortLogRepository((application as SortitApplication).db) }
     private val scanRepo by lazy { ScanSessionRepository((application as SortitApplication).db) }
+    private val autoApply by lazy {
+        val app = application as SortitApplication
+        AutoApplyUseCase(app.fileOps, templateRepo, excludeRepo, app.db.sortLogDao())
+    }
 
     private val scanVm by lazy {
         val app = application as SortitApplication
@@ -51,7 +57,7 @@ class MainActivity : ComponentActivity() {
         ViewModelProvider(this, object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                TemplateViewModel(templateRepo, scanRepo) as T
+                TemplateViewModel(templateRepo, scanRepo, excludeRepo) as T
         })[TemplateViewModel::class.java]
     }
 
@@ -59,7 +65,7 @@ class MainActivity : ComponentActivity() {
         ViewModelProvider(this, object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                MonitorViewModel(monitorRepo) as T
+                MonitorViewModel(monitorRepo, autoApply) as T
         })[MonitorViewModel::class.java]
     }
 
@@ -69,6 +75,15 @@ class MainActivity : ComponentActivity() {
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 DashboardViewModel(templateRepo, monitorRepo, logRepo, scanRepo) as T
         })[DashboardViewModel::class.java]
+    }
+
+    private val historyVm by lazy {
+        val app = application as SortitApplication
+        ViewModelProvider(this, object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                HistoryViewModel(logRepo, app.fileOps) as T
+        })[HistoryViewModel::class.java]
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,7 +96,7 @@ class MainActivity : ComponentActivity() {
             val darkTheme = when (themeMode) {
                 "light" -> false
                 "dark" -> true
-                else -> null // system
+                else -> null
             }
             SortitTheme(useDynamicColor = useDynamic, darkTheme = darkTheme) {
                 Surface(Modifier.fillMaxSize()) {
@@ -90,6 +105,7 @@ class MainActivity : ComponentActivity() {
                         templateVm = templateVm,
                         monitorVm = monitorVm,
                         scanVm = scanVm,
+                        historyVm = historyVm,
                         onDynamicColorChange = { enabled ->
                             app.prefs.useDynamicColor = enabled
                             useDynamic = enabled

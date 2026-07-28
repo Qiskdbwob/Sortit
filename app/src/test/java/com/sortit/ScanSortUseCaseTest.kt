@@ -23,7 +23,11 @@ class FakeFileOps(private val files: List<File>) : FileOps {
     override fun mkdirs(dir: String): Boolean = true
     override fun isReadableDir(path: String): Boolean = true
     override fun childCount(path: String): Int = files.count { it.absolutePath == path || it.absolutePath.startsWith("$path/") }
+    override fun restore(src: String, dstDir: String): String? = move(src, dstDir)
+    override fun listTrashFiles(): List<File> = files.filter { it.absolutePath.startsWith(FileOps.TRASH_ROOT) }
+    override fun deleteFile(path: String): Boolean = true
 }
+
 
 class ScanSortUseCaseTest {
     private fun tpl(mode: String, dirs: String? = null, name: String = "t") = TemplateEntity(

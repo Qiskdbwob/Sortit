@@ -1,68 +1,95 @@
 # Sortit
 
-Android file sorter + path monitor. Offline, local-only. UI v1.1 memakai Material 3 dashboard modern.
+Android **file sorter** + **path monitor**. Offline, local-only. Material 3.
 
-## Fitur (v1.1)
-- Dashboard ringkasan: jumlah file dipindahkan, masuk trash, gagal, dan pending review.
-- Rules: tambah/edit rule, mode sumber `Scan Semua` atau `Folder Pilihan`, path bisa input manual atau pilih via SAF (primary storage dipetakan ke path absolut).
-- Scan multi-rule: FAB **Scan** membuka picker rule, user bisa memilih beberapa rule untuk discan bersamaan dalam satu review.
-- Preview modern: thumbnail media, metadata, dan checkbox **Kecualikan**. Default semua file ikut ditindak; centang hanya untuk mengecualikan.
-- Pending scan memory: hasil scan disimpan di Room. Jika user klik Scan saat masih ada review belum ditindak, app menawarkan **Lanjutkan**, **Scan ulang**, atau **Buang**.
-- Aksi aman: `Pindah` ke folder target rule atau `Trash` ke `/storage/emulated/0/Sortit/.sortit-trash`. Tidak ada hapus permanen di v1.
-- Monitor path: readable badge, jumlah file, thumbnail media, dan refresh realtime via FileObserver.
-- Permission gate: All-files access untuk API 30+, izin legacy untuk Android di bawahnya.
-- Tema: pilihan antara Material You (dynamic color) atau tema custom Sortit (Purple/Mint/Amber).
+**Rilis terbaru: [v1.4.0](https://github.com/Qiskdbwob/Sortit/releases/tag/v1.4.0)**
+
+## Fitur (v1.4)
+
+### Rules
+- Ekstensi + folder tujuan + sumber `Scan Semua` / `Folder Pilihan`
+- **Filter size** (min/max MB) dan **umur** (file lebih tua dari N hari)
+- **Auto rule**: file di folder sumber langsung **Pindah** atau **Trash** tanpa scan/review (wajib Folder Pilihan)
+- **Exclude path per-rule** + **exclude global** (Pengaturan)
+- Scan multi-rule → satu review (centang kecualikan → Pindah / Trash)
+
+### Riwayat
+- Tab **Sampah**: file di `.sortit-trash`, filter ekstensi, search, multi-select
+- Tab **Dipindahkan**: by folder tujuan + ekstensi, search, multi-select
+- **Undo** ke path asal, **pindah ke folder lain**, hapus permanen (sampah)
+
+### Monitor
+- Multi-folder path, badge readable, thumbnail
+- **Edit** path monitor
+- **Pilih semua** sampai cap pindah (5000) — file di luar preview ikut
+- Tombol **Auto** jalankan rule otomatis terkait path
+
+### Lainnya
+- Preview scan + **X / batalkan** review & scan
+- Pending scan memory (Lanjutkan / Scan ulang / Buang)
+- Global exclude di Pengaturan
+- Tema siang/malam/sistem + dynamic color
+- Trash auto-cleanup (retensi 1–90 hari)
+
+## Alur singkat
+
+```
+Rule (ext + size/umur + exclude)
+        │
+   ┌────┴────┐
+   │ Scan    │ Auto (folder sumber)
+   ▼         ▼
+ Review    langsung MOVE/TRASH
+   │
+ Pindah / Trash
+   │
+ Riwayat → Undo / pindah lagi
+```
+
+Filter scan: **System → Global exclude → Per-rule exclude → ekstensi → size/umur**
 
 ## Arsitektur
 
 ```
-ui/          Compose screens + ViewModels
-  ├── MainScreen.kt        Navigation & permission gate
-  ├── DashboardScreen.kt   Ringkasan statistik
-  ├── TemplateScreen.kt    Rules CRUD
-  ├── SortirScreen.kt      Preview & aksi sort/trash
-  └── MonitorScreen.kt     Path monitoring
-domain/      Use cases
-  ├── FileScanner.kt       Shared scan engine (filter path/extension/exclude)
-  ├── ScanSortUseCase.kt   Deep recursive scan → Flow<Progress>
-  └── PreviewSortUseCase.kt Snapshot scan → List (untuk preview gate)
-repo/        Repository layer
-  ├── FileOps.kt           Interface + RealFileOps (all akses storage)
-  ├── TemplateRepository.kt
-  ├── MonitorRepository.kt
-  └── ScanSessionRepository.kt
-data/        Room database (AppDatabase, DAOs, entities)
-util/        Extensions, Prefs, StorageAccess, SystemExcludes
+ui/       Compose + ViewModels (Beranda, Rules, Monitor, Riwayat, Scan flow)
+domain/   FileScanner, ScanSort, SortFiles, AutoApply, ScanPath
+repo/     FileOps, Template/Monitor/Exclude/SortLog/ScanSession
+data/     Room sortit.db v3
+util/     SystemExcludes, Prefs, StoragePaths, TrashCleanup
 ```
 
-**Alur data:** `UI (Compose)` → `ViewModel` → `UseCase` → `Repository` → `Room/Storage`
-
 ## Teknis
-- Kotlin + Jetpack Compose Material 3, Room, Coroutine/Flow, Coil.
-- DB `sortit.db` version 2. Catatan: project masih memakai `fallbackToDestructiveMigration()` untuk fase dev.
-- CI: `.github/workflows/ci.yml` (unit test + assemble debug).
-- CD: `.github/workflows/cd.yml` (release APK setelah CI hijau).
-- R8/ProGuard diaktifkan untuk build release.
-- Target: armeabi-v7a (ARMv7 32-bit), minSdk 24.
+- Kotlin, Jetpack Compose Material 3, Room, Coroutines/Flow, Coil, WorkManager
+- DB version **3** (`fallbackToDestructiveMigration` — dev; upgrade bersih = reinstall / data reset)
+- minSdk 24, target/compile 34
+- CI: unit test + assembleDebug · CD: signed release APK (keystore secrets)
 
 ## Build
+
 ```bash
 ./gradlew testDebugUnitTest
 ./gradlew assembleDebug
+./gradlew assembleRelease   # butuh signing di local.properties atau env CI
 ```
 
-Release signing: buat `local.properties` di root project:
+`local.properties` (jangan commit):
+
 ```properties
-RELEASE_STORE_FILE=path/to/keystore.jks
-RELEASE_STORE_PASSWORD=your_password
-RELEASE_KEY_ALIAS=your_alias
-RELEASE_KEY_PASSWORD=your_password
+sdk.dir=...
+RELEASE_STORE_FILE=path/to/sortit-release.jks
+RELEASE_STORE_PASSWORD=...
+RELEASE_KEY_ALIAS=...
+RELEASE_KEY_PASSWORD=...
 ```
+
+## Unduh
+- GitHub Releases: https://github.com/Qiskdbwob/Sortit/releases
+- APK signed: update dari 1.2+ keystore sama tanpa uninstall
 
 ## Lisensi
-MIT License — lihat [LICENSE](LICENSE).
+MIT — [LICENSE](LICENSE)
 
-## Dokumen
-- `PRD-Sortit.md` — requirement detail.
-- `Ringkasan-Sortit.md` — ringkasan awam.
-- `CHANGELOG-Sortit.md` — perubahan v1.1.
+## Catatan keamanan
+- Butuh **All files access** (API 30+)
+- Auto rule **tidak** diizinkan mode “semua storage”
+- Folder sistem + trash app selalu di-block scan

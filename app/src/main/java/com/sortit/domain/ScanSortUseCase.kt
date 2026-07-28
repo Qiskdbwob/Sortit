@@ -8,8 +8,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 
-// Deep recursive scan by ekstensi. Emit progress bertahap supaya UI tidak freeze.
-// Menggunakan FileScanner shared engine untuk filter logic.
 class ScanSortUseCase(private val fileOps: FileOps) {
 
     data class Progress(
@@ -32,6 +30,7 @@ class ScanSortUseCase(private val fileOps: FileOps) {
         var scanned = 0
         var found = 0
         val seen = mutableSetOf<String>()
+        val now = System.currentTimeMillis()
 
         for (template in templates.filter { it.enabled }) {
             val exts = com.sortit.util.parseExtensions(template.extensions)
@@ -47,9 +46,12 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                     seq.forEach { f ->
                         scanned++
                         val path = f.absolutePath
+                        val size = f.length()
+                        val lm = f.lastModified()
                         val matches = !SystemExcludes.isSystemPath(path) &&
                                 com.sortit.util.matchesExtension(f.name, exts) &&
                                 !FileScanner.isExcluded(path, f.name, excludePatterns) &&
+                                FileScanner.matchesMeta(template, size, lm, now) &&
                                 seen.add(path)
                         if (matches) {
                             found++
@@ -59,9 +61,9 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                                 FileItem(
                                     path = path,
                                     name = f.name,
-                                    size = f.length(),
+                                    size = size,
                                     mimeType = mime,
-                                    lastModified = f.lastModified(),
+                                    lastModified = lm,
                                     isMedia = mime?.startsWith("image/") == true || mime?.startsWith("video/") == true
                                 )
                             )
@@ -71,7 +73,6 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                         }
                     }
                 } catch (_: Exception) {
-                    // Folder hilang/permission berubah: skip root ini
                 }
             }
         }

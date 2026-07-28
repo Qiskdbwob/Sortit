@@ -189,6 +189,9 @@ class ScanPathUseCase(private val fileOps: FileOps) {
     companion object {
         /** Cap default: cukup buat preview monitor, hindari OOM di folder WA besar. */
         const val DEFAULT_MAX = 200
+        /** Cap untuk aksi pindah semua (lebih longgar, tetap bounded). */
+        const val MOVE_ALL_MAX = 5000
         const val PREVIEW_UI = 40
     }
 }
+

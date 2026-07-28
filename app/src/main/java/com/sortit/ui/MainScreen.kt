@@ -57,6 +57,7 @@ import com.sortit.util.StoragePaths
 import com.sortit.repo.ExcludeRepository
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.activity.result.contract.ActivityResultContracts
@@ -70,6 +71,7 @@ fun MainScreen(
   templateVm: TemplateViewModel,
   monitorVm: MonitorViewModel,
   scanVm: ScanViewModel,
+  historyVm: HistoryViewModel,
   onDynamicColorChange: (Boolean) -> Unit = {},
   themeMode: String = "system",
   onThemeModeChange: (String) -> Unit = {}
@@ -101,7 +103,7 @@ fun MainScreen(
 
   val scanState by scanVm.state.collectAsState()
   Box(Modifier.fillMaxSize()) {
-    MainTabs(dashboardVm, templateVm, monitorVm, scanVm, onDynamicColorChange, themeMode, onThemeModeChange)
+    MainTabs(dashboardVm, templateVm, monitorVm, scanVm, historyVm, onDynamicColorChange, themeMode, onThemeModeChange)
     when (val s = scanState) {
       is ScanUiState.Idle -> Unit
       else -> ScanFlowScreen(state = s, scanVm = scanVm)
@@ -140,6 +142,7 @@ private fun MainTabs(
   templateVm: TemplateViewModel,
   monitorVm: MonitorViewModel,
   scanVm: ScanViewModel,
+  historyVm: HistoryViewModel,
   onDynamicColorChange: (Boolean) -> Unit,
   themeMode: String,
   onThemeModeChange: (String) -> Unit
@@ -194,6 +197,12 @@ private fun MainTabs(
           icon = { Icon(Icons.Default.Folder, contentDescription = null) },
           label = { Text("Monitor") }
         )
+        NavigationBarItem(
+          selected = tab == 3,
+          onClick = { tab = 3 },
+          icon = { Icon(Icons.Default.Delete, contentDescription = null) },
+          label = { Text("Riwayat") }
+        )
       }
     }
   ) { pad ->
@@ -213,7 +222,8 @@ private fun MainTabs(
         onAddRuleConsumed = { addRuleRequest = false },
         onScanRules = { ids -> scanVm.requestScan(ids) }
       )
-      else -> MonitorScreen(monitorVm, modifier = Modifier.padding(pad))
+      2 -> MonitorScreen(monitorVm, modifier = Modifier.padding(pad))
+      else -> HistoryScreen(historyVm, modifier = Modifier.padding(pad))
     }
   }
 

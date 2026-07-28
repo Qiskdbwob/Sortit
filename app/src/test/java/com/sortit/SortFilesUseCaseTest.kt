@@ -12,9 +12,20 @@ import java.io.File
 
 class FakeLogDao : SortLogDao {
     val rows = mutableListOf<SortLogEntity>()
-    override suspend fun insert(l: SortLogEntity) { rows.add(l) }
+    override suspend fun insert(l: SortLogEntity): Long {
+        rows.add(l)
+        return rows.size.toLong()
+    }
+    override suspend fun delete(l: SortLogEntity) { rows.remove(l) }
+    override suspend fun deleteIds(ids: List<Long>) { rows.removeAll { it.id in ids } }
     override suspend fun recent(templateId: Long, limit: Int): List<SortLogEntity> = rows
     override fun observeRecent(limit: Int): Flow<List<SortLogEntity>> = flowOf(rows.toList())
+    override suspend fun listTrashed(limit: Int): List<SortLogEntity> =
+        rows.filter { it.status == "OK" && it.dstPath.contains("/.sortit-trash/") }
+    override suspend fun listMoved(limit: Int): List<SortLogEntity> =
+        rows.filter { it.status == "OK" && !it.dstPath.contains("/.sortit-trash/") }
+    override suspend fun listOk(limit: Int): List<SortLogEntity> =
+        rows.filter { it.status == "OK" }
     override fun observeMovedCount(): Flow<Int> = flowOf(rows.count { it.status == "OK" && !it.dstPath.contains("/.sortit-trash/") })
     override fun observeTrashedCount(): Flow<Int> = flowOf(rows.count { it.status == "OK" && it.dstPath.contains("/.sortit-trash/") })
     override fun observeFailedCount(): Flow<Int> = flowOf(rows.count { it.status == "FAIL" })
@@ -33,6 +44,9 @@ private fun ops(moveResult: (String, String) -> String?): FileOps = object : Fil
     override fun mkdirs(dir: String): Boolean = true
     override fun isReadableDir(path: String): Boolean = true
     override fun childCount(path: String): Int = 0
+    override fun restore(src: String, dstDir: String): String? = move(src, dstDir)
+    override fun listTrashFiles(): List<File> = emptyList()
+    override fun deleteFile(path: String): Boolean = true
 }
 
 class SortFilesUseCaseTest {

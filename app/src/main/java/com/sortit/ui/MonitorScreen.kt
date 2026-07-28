@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoveUp
 import androidx.compose.material.icons.filled.SelectAll
@@ -75,7 +77,9 @@ import kotlinx.coroutines.withContext
 @Composable
 fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
   val list by vm.monitors.collectAsState()
+  val autoMsg by vm.autoMsg.collectAsState()
   var showAdd by remember { mutableStateOf(false) }
+  var editing by remember { mutableStateOf<MonitorEntity?>(null) }
 
   LazyColumn(
     modifier = modifier,
@@ -93,11 +97,20 @@ fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
           Spacer(Modifier.height(4.dp))
           Text("Monitor path", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         }
-        OutlinedButton(onClick = { showAdd = true }) {
-          Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-          Spacer(Modifier.size(6.dp))
-          Text("Tambah")
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          OutlinedButton(onClick = { vm.runAutoAll() }) { Text("Auto") }
+          OutlinedButton(onClick = { showAdd = true }) {
+            Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.size(6.dp))
+            Text("Tambah")
+          }
         }
+      }
+    }
+    autoMsg?.let { msg ->
+      item {
+        Text(msg, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+        TextButton(onClick = { vm.clearAutoMsg() }) { Text("Tutup") }
       }
     }
     if (list.isEmpty()) {
@@ -109,7 +122,7 @@ fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
         )
       }
     } else {
-      items(list, key = { it.id }) { m -> MonitorCard(m, vm) }
+      items(list, key = { it.id }) { m -> MonitorCard(m, vm, onEdit = { editing = m }) }
     }
   }
 
@@ -122,11 +135,21 @@ fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
       }
     )
   }
+  editing?.let { m ->
+    EditMonitorDialog(
+      initial = m,
+      onDismiss = { editing = null },
+      onSave = { name, path ->
+        vm.update(m.copy(name = name, path = path))
+        editing = null
+      }
+    )
+  }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel) {
+private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Unit) {
   val context = LocalContext.current
   val scan = remember { ScanPathUseCase(RealFileOpsHolder.ops) }
   val paths = remember(m.path) { splitMonitorPaths(m.path) }
@@ -215,6 +238,12 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel) {
           StampBadge(label, StampKind.MOVE)
         } else StampBadge("Tidak readable", StampKind.WARN)
         Spacer(Modifier.weight(1f))
+        IconButton(onClick = onEdit) {
+          Icon(Icons.Default.Edit, contentDescription = "Edit")
+        }
+        IconButton(onClick = { vm.runAutoFor(m) }) {
+          Icon(Icons.Default.PlayArrow, contentDescription = "Jalankan auto")
+        }
         IconButton(onClick = { vm.delete(m) }) {
           Icon(Icons.Default.Delete, contentDescription = "Hapus")
         }
@@ -290,7 +319,9 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel) {
             )
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
               IconButton(onClick = {
-                selectedPaths = inspection?.files?.map { it.path }?.toSet() ?: selectedPaths
+                // Ambil sampai MOVE_ALL_MAX biar file di luar preview UI ikut
+                val all = scan.inspect(m.path, ScanPathUseCase.MOVE_ALL_MAX).files.map { it.path }.toSet()
+                selectedPaths = all.ifEmpty { inspection?.files?.map { it.path }?.toSet() ?: selectedPaths }
               }) {
                 Icon(Icons.Default.SelectAll, contentDescription = "Pilih semua")
               }

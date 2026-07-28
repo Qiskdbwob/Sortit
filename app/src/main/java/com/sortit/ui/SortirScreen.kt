@@ -88,6 +88,9 @@ private fun ExistingPendingDialog(state: ScanUiState.ExistingPending, scanVm: Sc
         TextButton(onClick = { scanVm.rescanPending(state.session, state.requestedRuleIds) }) { Text("Scan ulang") }
         Button(onClick = { scanVm.continuePending(state.session) }) { Text("Lanjutkan") }
       }
+    },
+    dismissButton = {
+      TextButton(onClick = { scanVm.closePreview() }) { Text("X / Nanti") }
     }
   )
 }
@@ -104,7 +107,7 @@ private fun ScanProgressDialog(state: ScanUiState.Scanning, scanVm: ScanViewMode
         if (state.current.isNotBlank()) OneLinePath(state.current)
       }
     },
-    confirmButton = { TextButton(onClick = { scanVm.reset() }) { Text("Batal") } }
+    confirmButton = { TextButton(onClick = { scanVm.reset() }) { Text("X Batalkan") } }
   )
 }
 

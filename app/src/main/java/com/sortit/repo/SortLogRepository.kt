@@ -24,4 +24,12 @@ class SortLogRepository(private val db: AppDatabase) {
     ) { moved, trashed, failed ->
         SortCounts(moved = moved, trashed = trashed, failed = failed)
     }
+
+    suspend fun listTrashed(limit: Int = 2000): List<SortLogEntity> = db.sortLogDao().listTrashed(limit)
+    suspend fun listMoved(limit: Int = 2000): List<SortLogEntity> = db.sortLogDao().listMoved(limit)
+    suspend fun listOk(limit: Int = 3000): List<SortLogEntity> = db.sortLogDao().listOk(limit)
+    suspend fun delete(log: SortLogEntity) = db.sortLogDao().delete(log)
+    suspend fun deleteIds(ids: List<Long>) {
+        if (ids.isNotEmpty()) db.sortLogDao().deleteIds(ids)
+    }
 }
