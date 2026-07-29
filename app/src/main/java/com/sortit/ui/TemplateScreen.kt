@@ -11,10 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -24,7 +21,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,6 +49,12 @@ import com.sortit.ui.components.DashedDivider
 import com.sortit.ui.components.EmptyState
 import com.sortit.ui.components.Kicker
 import com.sortit.ui.components.MonoText
+import com.sortit.ui.components.OneLinePath
+import com.sortit.ui.components.PathInputField
+import com.sortit.ui.components.SizeAgeSummary
+import com.sortit.ui.components.SortitDialog
+import com.sortit.ui.components.StampBadge
+import com.sortit.ui.components.StampKind
 import com.sortit.ui.components.TagChip
 import com.sortit.ui.components.Ticket
 import com.sortit.util.StoragePaths
@@ -157,13 +159,14 @@ fun RulesScreen(
   }
 
   confirmDelete?.let { t ->
-    AlertDialog(
-      onDismissRequest = { confirmDelete = null },
-      title = { Text("Hapus rule?") },
-      text = { Text("Rule '${t.name}' dihapus dari konfigurasi. File di disk tidak dihapus.") },
+    SortitDialog(
+      title = "Hapus rule?",
+      onDismiss = { confirmDelete = null },
       confirmButton = { TextButton(onClick = { vm.delete(t); confirmDelete = null }) { Text("Hapus") } },
       dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Batal") } }
-    )
+    ) {
+      Text("Rule '${t.name}' dihapus dari konfigurasi. File di disk tidak dihapus.")
+    }
   }
 }
 
@@ -199,22 +202,45 @@ private fun RuleCard(
         }
         Switch(checked = t.enabled, onCheckedChange = onToggle)
       }
-      Column {
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         MonoText("Target — ${StoragePaths.displayPath(t.targetTreeUri)}")
-        Text(
-          buildString {
-            append(if (t.sourceMode == "ALL") "Sumber: semua storage" else "Sumber: ${t.sourceDirs ?: "-"}")
-            if (t.minSizeBytes > 0 || t.maxSizeBytes > 0) {
-              append(" · size ")
-              if (t.minSizeBytes > 0) append("≥${t.minSizeBytes}")
-              if (t.maxSizeBytes > 0) append("≤${t.maxSizeBytes}")
-            }
-            if (t.maxAgeDays > 0) append(" · umur ≥${t.maxAgeDays}h")
-            if (t.autoEnabled) append(" · auto ${t.autoAction}")
-          },
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        if (t.sourceMode == "ALL") {
+          Text(
+            "Sumber: semua storage",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+        } else {
+          Text(
+            "Sumber:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+          val srcList = (t.sourceDirs ?: "").split(",").map { it.trim() }.filter { it.isNotBlank() }
+          srcList.take(3).forEach { OneLinePath(it) }
+          if (srcList.size > 3) {
+            Text(
+              "+${srcList.size - 3} lainnya",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+          }
+        }
+        SizeAgeSummary(t.minSizeBytes, t.maxSizeBytes, t.maxAgeDays)
+        if (t.autoEnabled) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            StampBadge(
+              text = if (t.autoAction == "TRASH") "AUTO TRASH" else "AUTO MOVE",
+              kind = if (t.autoAction == "TRASH") StampKind.TRASH else StampKind.MOVE
+            )
+            Spacer(Modifier.size(8.dp))
+            Text(
+              "File baru di folder sumber langsung diproses",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+          }
+        }
       }
       DashedDivider(Modifier.fillMaxWidth().height(1.dp), vertical = false)
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -257,7 +283,13 @@ private fun RuleEditorDialog(
   var ext by remember { mutableStateOf(initial?.extensions ?: "") }
   var target by remember { mutableStateOf(initial?.targetTreeUri ?: "/storage/emulated/0/Sortit/") }
   var mode by remember { mutableStateOf(initial?.sourceMode ?: "ALL") }
-  var dirs by remember { mutableStateOf(initial?.sourceDirs ?: "") }
+  var dirList by remember {
+    mutableStateOf(initial?.sourceDirs?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList())
+  }
+  var dirInput by remember { mutableStateOf("") }
+  var dirError by remember { mutableStateOf<String?>(null) }
+  var excludeInput by remember { mutableStateOf("") }
+  var excludeError by remember { mutableStateOf<String?>(null) }
   var minMb by remember { mutableStateOf(if ((initial?.minSizeBytes ?: 0) > 0) ((initial!!.minSizeBytes) / (1024 * 1024)).toString() else "") }
   var maxMb by remember { mutableStateOf(if ((initial?.maxSizeBytes ?: 0) > 0) ((initial!!.maxSizeBytes) / (1024 * 1024)).toString() else "") }
   var ageDays by remember { mutableStateOf(if ((initial?.maxAgeDays ?: 0) > 0) initial!!.maxAgeDays.toString() else "") }
@@ -280,18 +312,47 @@ private fun RuleEditorDialog(
   val targetLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
     uri?.let { persist(it); target = StoragePaths.uriToPath(it) ?: it.toString() }
   }
+  fun validateDir(path: String): String? {
+    if (path.isBlank()) return "Path folder sumber wajib diisi."
+    if (path.startsWith("content://")) return "URI SAF non-primary belum didukung: $path"
+    if (SystemExcludes.isSystemPath(path)) return "Path sumber dikecualikan sistem: $path"
+    val f = File(path)
+    if (!f.exists() || !f.isDirectory || !f.canRead()) return "Path sumber tidak readable: $path"
+    return null
+  }
+
+  fun addDir(path: String): Boolean {
+    val clean = path.trim().trimEnd('/')
+    val e = validateDir(clean)
+    if (e != null) { dirError = e; return false }
+    if (clean !in dirList) dirList = dirList + clean
+    dirInput = ""
+    dirError = null
+    error = null
+    return true
+  }
+
+  fun addExclude(path: String): Boolean {
+    val clean = path.trim().trimEnd('/')
+    if (clean.isBlank()) { excludeError = "Path exclude wajib diisi."; return false }
+    if (clean.startsWith("content://")) { excludeError = "URI SAF non-primary belum didukung: $clean"; return false }
+    if (clean !in excludes) excludes = excludes + clean
+    excludeInput = ""
+    excludeError = null
+    error = null
+    return true
+  }
+
   val dirLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
     uri?.let {
       persist(it)
-      val picked = StoragePaths.uriToPath(it) ?: it.toString()
-      dirs = (dirs.split(",") + picked).map { it.trim() }.filter { it.isNotBlank() }.distinct().joinToString(",")
+      addDir(StoragePaths.uriToPath(it) ?: it.toString())
     }
   }
   val excludeLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
     uri?.let {
       persist(it)
-      val picked = (StoragePaths.uriToPath(it) ?: return@let).trimEnd('/')
-      if (picked.isNotBlank() && picked !in excludes) excludes = excludes + picked
+      addExclude(StoragePaths.uriToPath(it) ?: it.toString())
     }
   }
 
@@ -307,9 +368,8 @@ private fun RuleEditorDialog(
     val targetFile = File(cleanTarget)
     if (targetFile.exists() && (!targetFile.isDirectory || !targetFile.canWrite())) return "Folder tujuan ada tapi tidak writable."
     if (mode == "FOLDERS") {
-      val list = dirs.split(",").map { it.trim() }.filter { it.isNotBlank() }
-      if (list.isEmpty()) return "Mode Folder Pilihan butuh minimal 1 path."
-      list.forEach { p ->
+      if (dirList.isEmpty()) return "Mode Folder Pilihan butuh minimal 1 path."
+      dirList.forEach { p ->
         if (p.startsWith("content://")) return "URI SAF non-primary belum didukung: $p"
         if (SystemExcludes.isSystemPath(p)) return "Path sumber dikecualikan sistem: $p"
         val f = File(p)
@@ -328,25 +388,35 @@ private fun RuleEditorDialog(
     return null
   }
 
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text(if (initial == null) "Rule baru" else "Edit rule") },
-    text = {
-      Column(
-        Modifier
-          .fillMaxWidth()
-          .heightIn(max = 520.dp)
-          .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-      ) {
+  SortitDialog(
+    title = if (initial == null) "Rule baru" else "Edit rule",
+    onDismiss = onDismiss,
+    confirmButton = {
+      Button(onClick = {
+        val e = validate()
+        if (e != null) error = e
+        else {
+          val minB = minMb.trim().toLongOrNull()?.times(1024 * 1024) ?: 0L
+          val maxB = maxMb.trim().toLongOrNull()?.times(1024 * 1024) ?: 0L
+          val age = ageDays.trim().toIntOrNull() ?: 0
+          onSave(
+            name.trim(), ext.trim(), target.trim(), mode,
+            dirList.joinToString(",").ifBlank { null },
+            minB, maxB, age, autoEnabled, autoAction, excludes
+          )
+        }
+      }) { Text("Simpan") }
+    },
+    dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } }
+  ) {
         OutlinedTextField(value = name, onValueChange = { name = it; error = null }, label = { Text("Nama") }, singleLine = true)
         OutlinedTextField(value = ext, onValueChange = { ext = it; error = null }, label = { Text("Ekstensi (txt,bak,tmp)") }, singleLine = true)
-        OutlinedTextField(value = target, onValueChange = { target = it; error = null }, label = { Text("Folder tujuan") })
-        OutlinedButton(onClick = { targetLauncher.launch(null) }) {
-          Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
-          Spacer(Modifier.size(6.dp))
-          Text("Pilih folder tujuan")
-        }
+        PathInputField(
+          value = target,
+          onValueChange = { target = it; error = null },
+          label = "Folder tujuan",
+          onPickFolder = { targetLauncher.launch(null) }
+        )
         Text("Sumber scan:", fontWeight = FontWeight.SemiBold)
         Row(verticalAlignment = Alignment.CenterVertically) {
           RadioButton(selected = mode == "ALL", onClick = { mode = "ALL"; if (autoEnabled) autoEnabled = false })
@@ -356,30 +426,55 @@ private fun RuleEditorDialog(
           Text("Folder pilihan")
         }
         if (mode == "FOLDERS") {
-          OutlinedButton(onClick = { dirLauncher.launch(null) }) {
+          dirList.forEach { p ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+              OneLinePath(p, modifier = Modifier.weight(1f))
+              IconButton(onClick = { dirList = dirList - p }) {
+                Icon(Icons.Default.Close, contentDescription = "Hapus")
+              }
+            }
+          }
+          PathInputField(
+            value = dirInput,
+            onValueChange = { dirInput = it; dirError = null },
+            label = "Folder sumber",
+            error = dirError,
+            onPickFolder = { dirLauncher.launch(null) }
+          )
+          OutlinedButton(onClick = { addDir(dirInput) }, enabled = dirInput.isNotBlank()) {
             Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.size(6.dp))
-            Text("Tambah folder sumber")
-          }
-          if (dirs.isNotBlank()) {
-            Text("Sumber: $dirs", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Tambah")
           }
         }
-        Text("Filter size / umur (opsional)", fontWeight = FontWeight.SemiBold)
+        Text("Filter ukuran & umur (opsional)", fontWeight = FontWeight.SemiBold)
+        Text(
+          "Kosongkan jika tidak dipakai. Umur = hanya file yang lebih tua dari N hari yang diproses.",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
           OutlinedTextField(
             value = minMb, onValueChange = { minMb = it; error = null },
-            label = { Text("Min MB") }, singleLine = true, modifier = Modifier.weight(1f)
+            label = { Text("Min ukuran (MB)") }, singleLine = true, modifier = Modifier.weight(1f),
+            suffix = { Text("MB") }
           )
           OutlinedTextField(
             value = maxMb, onValueChange = { maxMb = it; error = null },
-            label = { Text("Max MB") }, singleLine = true, modifier = Modifier.weight(1f)
+            label = { Text("Max ukuran (MB)") }, singleLine = true, modifier = Modifier.weight(1f),
+            suffix = { Text("MB") }
           )
         }
         OutlinedTextField(
           value = ageDays, onValueChange = { ageDays = it; error = null },
-          label = { Text("Umur min (hari) — file lebih tua dari N hari") },
+          label = { Text("Umur minimum file (hari)") },
+          supportingText = { Text("Contoh: 7 = hanya file lebih tua dari seminggu") },
           singleLine = true
+        )
+        SizeAgeSummary(
+          minSizeBytes = minMb.trim().toLongOrNull()?.times(1024 * 1024) ?: 0L,
+          maxSizeBytes = maxMb.trim().toLongOrNull()?.times(1024 * 1024) ?: 0L,
+          maxAgeDays = ageDays.trim().toIntOrNull() ?: 0
         )
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
           Column(Modifier.weight(1f)) {
@@ -411,38 +506,26 @@ private fun RuleEditorDialog(
           }
         }
         Text("Kecualikan path (per-rule)", fontWeight = FontWeight.SemiBold)
-        OutlinedButton(onClick = { excludeLauncher.launch(null) }) {
-          Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
-          Spacer(Modifier.size(6.dp))
-          Text("Tambah path exclude")
-        }
         excludes.forEach { p ->
           Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(p, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+            OneLinePath(p, modifier = Modifier.weight(1f))
             IconButton(onClick = { excludes = excludes - p }) {
               Icon(Icons.Default.Close, contentDescription = "Hapus")
             }
           }
         }
-        if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-      }
-    },
-    confirmButton = {
-      Button(onClick = {
-        val e = validate()
-        if (e != null) error = e
-        else {
-          val minB = minMb.trim().toLongOrNull()?.times(1024 * 1024) ?: 0L
-          val maxB = maxMb.trim().toLongOrNull()?.times(1024 * 1024) ?: 0L
-          val age = ageDays.trim().toIntOrNull() ?: 0
-          onSave(
-            name.trim(), ext.trim(), target.trim(), mode,
-            dirs.trim().ifBlank { null },
-            minB, maxB, age, autoEnabled, autoAction, excludes
-          )
+        PathInputField(
+          value = excludeInput,
+          onValueChange = { excludeInput = it; excludeError = null },
+          label = "Path exclude",
+          error = excludeError,
+          onPickFolder = { excludeLauncher.launch(null) }
+        )
+        OutlinedButton(onClick = { addExclude(excludeInput) }, enabled = excludeInput.isNotBlank()) {
+          Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+          Spacer(Modifier.size(6.dp))
+          Text("Tambah")
         }
-      }) { Text("Simpan") }
-    },
-    dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } }
-  )
+        if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+  }
 }

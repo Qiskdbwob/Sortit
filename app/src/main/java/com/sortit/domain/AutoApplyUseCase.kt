@@ -8,6 +8,7 @@ import com.sortit.repo.TemplateRepository
 import com.sortit.util.SystemExcludes
 import com.sortit.util.matchesExtension
 import com.sortit.util.parseExtensions
+import com.sortit.util.extensionFolder
 import com.sortit.util.splitMonitorPaths
 import java.io.File
 
@@ -108,7 +109,7 @@ class AutoApplyUseCase(
                 if (FileScanner.isExcluded(path, f.name, excludes)) { skipped++; continue }
                 if (!FileScanner.matchesMeta(rule, f.length(), f.lastModified(), now)) { skipped++; continue }
 
-                val sub = "$baseDir/${extFolder(f.name)}"
+                val sub = "$baseDir/${extensionFolder(f.name)}"
                 fileOps.mkdirs(sub)
                 val dst = fileOps.move(path, sub)
                 if (dst != null) {
@@ -139,10 +140,5 @@ class AutoApplyUseCase(
             }
         }
         return Result(moved, trashed, failed, skipped)
-    }
-
-    private fun extFolder(name: String): String {
-        val dot = name.lastIndexOf('.')
-        return if (dot > 0 && dot < name.length - 1) name.substring(dot + 1).lowercase() else "other"
     }
 }

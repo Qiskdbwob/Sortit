@@ -42,3 +42,9 @@ fun splitMonitorPaths(raw: String): List<String> =
 
 fun joinMonitorPaths(paths: List<String>): String =
     paths.map { it.trim() }.filter { it.isNotBlank() }.joinToString("\n")
+
+/** Ambil ekstensi file tanpa titik, lowercase. "FILE.JPG" → "jpg", "noext" → "other" */
+fun extensionFolder(name: String): String {
+    val dot = name.lastIndexOf('.')
+    return if (dot > 0 && dot < name.length - 1) name.substring(dot + 1).lowercase() else "other"
+}

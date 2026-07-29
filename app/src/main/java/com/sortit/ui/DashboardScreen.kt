@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.sortit.data.MonitorEntity
 import com.sortit.data.SortLogEntity
 import com.sortit.domain.ScanPathUseCase
+import com.sortit.repo.RealFileOps
 import com.sortit.ui.components.EmptyState
 import com.sortit.ui.components.Kicker
 import com.sortit.ui.components.ManifestTally
@@ -46,6 +47,7 @@ import com.sortit.ui.components.formatDate
 import com.sortit.util.LinkUtils
 import com.sortit.util.splitMonitorPaths
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -137,9 +139,13 @@ fun DashboardScreen(
 
 @Composable
 private fun MonitorStatusLine(m: MonitorEntity) {
-  val scan = remember { ScanPathUseCase(RealFileOpsHolder.ops) }
+  val scan = remember { ScanPathUseCase(RealFileOps()) }
   val inspection by produceState<ScanPathUseCase.PathInspection?>(initialValue = null, m.path, m.enabled) {
-    value = withContext(Dispatchers.IO) { if (m.enabled) scan.inspect(m.path) else null }
+    while (true) {
+      value = withContext(Dispatchers.IO) { if (m.enabled) scan.inspect(m.path) else null }
+      if (!m.enabled) break
+      delay(30_000)
+    }
   }
   val paths = remember(m.path) { splitMonitorPaths(m.path) }
   val pathLabel = if (paths.size <= 1) (paths.firstOrNull() ?: m.path) else "${paths.size} folder · ${paths.first()}"

@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,18 +18,27 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -420,6 +430,136 @@ fun ManifestTally(kicker: String, items: List<TallyItem>, modifier: Modifier = M
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Dialog dasar Sortit: sudut mengikuti shapes.medium, tanpa tonal elevation,
+ * judul tebal. [content] di-render dalam Column scrollable (maks 560.dp).
+ */
+@Composable
+fun SortitDialog(
+    title: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    confirmButton: (@Composable () -> Unit)? = null,
+    dismissButton: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 0.dp,
+        title = { Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 560.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) { content() }
+        },
+        confirmButton = { confirmButton?.invoke() },
+        dismissButton = dismissButton?.let { d -> { d() } }
+    )
+}
+
+/**
+ * Banner info/peringatan full width - warna semantik sama seperti [StampBadge]
+ * tapi tidak miring. [withIcon] false untuk teks saja.
+ */
+@Composable
+fun InfoBanner(
+    text: String,
+    modifier: Modifier = Modifier,
+    kind: StampKind = StampKind.WARN,
+    withIcon: Boolean = true
+) {
+    val colors = LocalSortitColors.current
+    val fg: Color
+    val bg: Color
+    when (kind) {
+        StampKind.MOVE -> { fg = colors.move; bg = colors.moveSoft }
+        StampKind.TRASH -> { fg = colors.trash; bg = colors.trashSoft }
+        StampKind.WARN -> { fg = colors.warn; bg = colors.warnSoft }
+        StampKind.PENDING -> { fg = colors.inkSoft; bg = Color.Transparent }
+    }
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        color = bg,
+        border = BorderStroke(1.dp, fg)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (withIcon) {
+                Icon(
+                    imageVector = if (kind == StampKind.WARN || kind == StampKind.TRASH) Icons.Default.Warning else Icons.Default.Info,
+                    contentDescription = null,
+                    tint = fg,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+            Text(text = text, color = fg, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+/** Input path dengan tombol pick folder opsional + dukungan pesan error. */
+@Composable
+fun PathInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    onPickFolder: (() -> Unit)? = null,
+    error: String? = null,
+    singleLine: Boolean = true
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = modifier,
+        singleLine = singleLine,
+        isError = error != null,
+        supportingText = if (error != null) ({ Text(error) }) else null,
+        trailingIcon = if (onPickFolder != null) ({
+            IconButton(onClick = onPickFolder) {
+                Icon(Icons.Default.Folder, contentDescription = "Pilih folder")
+            }
+        }) else null
+    )
+}
+
+/** Ringkasan filter ukuran/umur rule sebagai deretan [TagChip]. */
+@Composable
+fun SizeAgeSummary(
+    minSizeBytes: Long,
+    maxSizeBytes: Long,
+    maxAgeDays: Int,
+    modifier: Modifier = Modifier
+) {
+    val chips = buildList {
+        if (minSizeBytes > 0) add("≥ ${formatSize(minSizeBytes)}")
+        if (maxSizeBytes > 0) add("≤ ${formatSize(maxSizeBytes)}")
+        if (maxAgeDays > 0) add("umur ≥ $maxAgeDays hari")
+    }
+    if (chips.isEmpty()) {
+        Text(
+            text = "Tanpa filter ukuran/umur",
+            modifier = modifier,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall
+        )
+    } else {
+        Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            chips.forEach { TagChip(it) }
         }
     }
 }

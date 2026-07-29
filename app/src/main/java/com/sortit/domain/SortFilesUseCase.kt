@@ -2,6 +2,7 @@ package com.sortit.domain
 
 import com.sortit.data.SortLogDao
 import com.sortit.repo.FileOps
+import com.sortit.util.extensionFolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -21,12 +22,6 @@ class SortFilesUseCase(
         val failed: Int,
         val currentPath: String
     )
-
-    /** Ambil ekstensi file tanpa titik, lowercase. "FILE.JPG" → "jpg", "noext" → "other" */
-    private fun extensionFolder(name: String): String {
-        val dot = name.lastIndexOf('.')
-        return if (dot > 0 && dot < name.length - 1) name.substring(dot + 1).lowercase() else "other"
-    }
 
     fun execute(
         templateId: Long,

@@ -65,7 +65,11 @@ class MainActivity : ComponentActivity() {
         ViewModelProvider(this, object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                MonitorViewModel(monitorRepo, autoApply) as T
+                MonitorViewModel(
+                    monitorRepo, autoApply,
+                    (application as SortitApplication).fileOps,
+                    (application as SortitApplication).db.sortLogDao()
+                ) as T
         })[MonitorViewModel::class.java]
     }
 

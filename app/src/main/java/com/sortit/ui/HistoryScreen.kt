@@ -1,14 +1,12 @@
 package com.sortit.ui
 
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,7 +24,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
@@ -46,9 +43,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sortit.ui.components.EmptyState
+import com.sortit.ui.components.InfoBanner
 import com.sortit.ui.components.Kicker
 import com.sortit.ui.components.MonoText
 import com.sortit.ui.components.OneLinePath
+import com.sortit.ui.components.StampKind
 import com.sortit.ui.components.Ticket
 import com.sortit.ui.components.formatSize
 import com.sortit.util.StoragePaths
@@ -101,7 +100,7 @@ fun HistoryScreen(vm: HistoryViewModel, modifier: Modifier = Modifier) {
       Kicker("Riwayat")
       Text("Sampah & Dipindahkan", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
       msg?.let {
-        Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+        InfoBanner(text = it, kind = StampKind.MOVE, withIcon = false)
         TextButton(onClick = { vm.clearMsg() }) { Text("Tutup pesan") }
       }
     }

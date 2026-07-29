@@ -14,12 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,10 +43,13 @@ import com.sortit.data.ScanItemEntity
 import com.sortit.domain.SortFilesUseCase
 import com.sortit.ui.components.DashedDivider
 import com.sortit.ui.components.EmptyState
+import com.sortit.ui.components.InfoBanner
 import com.sortit.ui.components.MediaThumb
 import com.sortit.ui.components.MonoText
 import com.sortit.ui.components.OneLinePath
 import com.sortit.ui.components.SectionCard
+import com.sortit.ui.components.SortitDialog
+import com.sortit.ui.components.StampKind
 import com.sortit.ui.components.formatDate
 import com.sortit.ui.components.formatSize
 import com.sortit.util.truncateFileName
@@ -73,75 +74,63 @@ fun ScanFlowScreen(state: ScanUiState, scanVm: ScanViewModel) {
 
 @Composable
 private fun ExistingPendingDialog(state: ScanUiState.ExistingPending, scanVm: ScanViewModel) {
-  AlertDialog(
-    onDismissRequest = { scanVm.closePreview() },
-    title = { Text("Ada review belum selesai") },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Hasil scan sebelumnya berisi ${state.session.totalFound} file dan masih menunggu tindakan.")
-        MonoText("Dibuat ${formatDate(state.session.createdAt)}")
-      }
-    },
-    confirmButton = {
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        TextButton(onClick = { scanVm.dismissPending(state.session) }) { Text("Buang") }
-        TextButton(onClick = { scanVm.rescanPending(state.session, state.requestedRuleIds) }) { Text("Scan ulang") }
-        Button(onClick = { scanVm.continuePending(state.session) }) { Text("Lanjutkan") }
-      }
-    },
+  SortitDialog(
+    title = "Ada review belum selesai",
+    onDismiss = { scanVm.closePreview() },
+    confirmButton = { Button(onClick = { scanVm.continuePending(state.session) }) { Text("Lanjutkan") } },
     dismissButton = {
-      TextButton(onClick = { scanVm.closePreview() }) { Text("X / Nanti") }
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TextButton(onClick = { scanVm.dismissPending(state.session) }) {
+          Text("Buang", color = MaterialTheme.colorScheme.error)
+        }
+        TextButton(onClick = { scanVm.rescanPending(state.session, state.requestedRuleIds) }) { Text("Scan ulang") }
+      }
     }
-  )
+  ) {
+    Text("Hasil scan sebelumnya berisi ${state.session.totalFound} file dan masih menunggu tindakan.")
+    MonoText("Dibuat ${formatDate(state.session.createdAt)}")
+  }
 }
 
 @Composable
 private fun ScanProgressDialog(state: ScanUiState.Scanning, scanVm: ScanViewModel) {
-  AlertDialog(
-    onDismissRequest = { },
-    title = { Text("Scanning...", fontWeight = FontWeight.Bold) },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        Text("${state.scanned} file dicek \u00b7 ${state.found} cocok", fontWeight = FontWeight.SemiBold)
-        if (state.current.isNotBlank()) OneLinePath(state.current)
+  SortitDialog(
+    title = "Scanning...",
+    onDismiss = { },
+    confirmButton = {
+      TextButton(onClick = { scanVm.reset() }) {
+        Text("Batalkan", color = MaterialTheme.colorScheme.error)
       }
-    },
-    confirmButton = { TextButton(onClick = { scanVm.reset() }) { Text("X Batalkan") } }
-  )
+    }
+  ) {
+    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    Text("${state.scanned} file dicek \u00b7 ${state.found} cocok", fontWeight = FontWeight.SemiBold)
+    if (state.current.isNotBlank()) OneLinePath(state.current)
+  }
 }
 
 @Composable
 private fun SortProgressDialog(state: ScanUiState.Running, scanVm: ScanViewModel) {
   val progress = if (state.total == 0) 0f else (state.done + state.failed).toFloat() / state.total.toFloat()
-  AlertDialog(
-    onDismissRequest = { },
-    title = {
-      Text(
-        if (state.action == SortFilesUseCase.Action.TRASH) "Memindah ke trash..." else "Memindahkan file...",
-        fontWeight = FontWeight.Bold
-      )
-    },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-        Text("${state.done + state.failed}/${state.total} \u00b7 gagal ${state.failed}", fontWeight = FontWeight.SemiBold)
-        if (state.current.isNotBlank()) OneLinePath(state.current)
-      }
-    },
-    confirmButton = { }
-  )
+  SortitDialog(
+    title = if (state.action == SortFilesUseCase.Action.TRASH) "Memindah ke trash..." else "Memindahkan file...",
+    onDismiss = { }
+  ) {
+    LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+    Text("${state.done + state.failed}/${state.total} \u00b7 gagal ${state.failed}", fontWeight = FontWeight.SemiBold)
+    if (state.current.isNotBlank()) OneLinePath(state.current)
+  }
 }
 
 @Composable
 private fun DoneDialog(state: ScanUiState.Done, onDone: () -> Unit) {
-  AlertDialog(
-    onDismissRequest = onDone,
-    icon = { Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(44.dp), tint = LocalSortitColors.current.move) },
-    title = { Text("Aksi selesai", fontWeight = FontWeight.Bold) },
-    text = { Text("Dipindahkan: ${state.moved} \u00b7 Trash: ${state.trashed} \u00b7 Gagal: ${state.failed}") },
+  SortitDialog(
+    title = "Aksi selesai",
+    onDismiss = onDone,
     confirmButton = { Button(onClick = onDone) { Text("Kembali") } }
-  )
+  ) {
+    Text("Dipindahkan: ${state.moved} \u00b7 Trash: ${state.trashed} \u00b7 Gagal: ${state.failed}")
+  }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -195,6 +184,14 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
       contentPadding = PaddingValues(16.dp),
       verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+      if (state.items.size > 200) {
+        item {
+          InfoBanner(
+            text = "Hasil besar: ${state.items.size} file. Pertimbangkan persempit rule agar review lebih ringan.",
+            kind = StampKind.WARN
+          )
+        }
+      }
       item {
         SectionCard(title = "Pilih file yang dikecualikan", subtitle = "Default semua file ikut ditindak. Centang hanya untuk mengecualikan.") {
           Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

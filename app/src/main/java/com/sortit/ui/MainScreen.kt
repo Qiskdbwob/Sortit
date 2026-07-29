@@ -11,26 +11,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,22 +45,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sortit.SortitApplication
 import com.sortit.data.TemplateEntity
+import com.sortit.ui.components.SortitDialog
 import com.sortit.util.StorageAccess
-import kotlinx.coroutines.launch
-import com.sortit.util.SystemExcludes
-import com.sortit.util.StoragePaths
-import com.sortit.repo.ExcludeRepository
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.compose.rememberLauncherForActivityResult
-import android.net.Uri
-import android.content.Intent
 
 @Composable
 fun MainScreen(
@@ -155,7 +139,7 @@ private fun MainTabs(
 
   Scaffold(
     topBar = {
-      androidx.compose.material3.CenterAlignedTopAppBar(
+      CenterAlignedTopAppBar(
         title = {
           Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -239,194 +223,13 @@ private fun MainTabs(
   }
 
   if (showSettings) {
-    SettingsDialog(onDismiss = { showSettings = false }, onDynamicColorChange = onDynamicColorChange, themeMode = themeMode, onThemeModeChange = onThemeModeChange)
-  }
-}
-
-@Composable
-private fun SettingsDialog(
-  onDismiss: () -> Unit,
-  onDynamicColorChange: (Boolean) -> Unit,
-  themeMode: String,
-  onThemeModeChange: (String) -> Unit
-) {
-  val context = LocalContext.current
-  val app = context.applicationContext as SortitApplication
-  val scope = rememberCoroutineScope()
-  val excludeRepo = remember { ExcludeRepository(app.db) }
-  var dynamicColor by remember { mutableStateOf(app.prefs.useDynamicColor) }
-  var mode by remember { mutableStateOf(themeMode) }
-  var retentionDays by remember { mutableIntStateOf(app.prefs.trashRetentionDays) }
-  var globalExcludes by remember { mutableStateOf<List<String>>(emptyList()) }
-  var excludeError by remember { mutableStateOf<String?>(null) }
-  var reloadTick by remember { mutableIntStateOf(0) }
-
-  fun reloadExcludes() {
-    scope.launch {
-      globalExcludes = excludeRepo.globalPatterns().map { it.trimEnd('/') }.distinct().sorted()
-    }
-  }
-
-  LaunchedEffect(reloadTick) { reloadExcludes() }
-
-  fun persistUri(uri: Uri) = runCatching {
-    context.contentResolver.takePersistableUriPermission(
-      uri,
-      Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+    SettingsDialog(
+      onDismiss = { showSettings = false },
+      onDynamicColorChange = onDynamicColorChange,
+      themeMode = themeMode,
+      onThemeModeChange = onThemeModeChange
     )
   }
-
-  fun addExcludePath(raw: String) {
-    val path = raw.trim().trimEnd('/')
-    excludeError = null
-    when {
-      path.isBlank() -> excludeError = "Path kosong."
-      path.startsWith("content://") -> excludeError = "URI SAF non-primary belum didukung."
-      SystemExcludes.isSystemPath(path) -> excludeError = "Path sistem sudah dilindungi otomatis."
-      else -> scope.launch {
-        excludeRepo.addGlobal(path)
-        reloadTick++
-      }
-    }
-  }
-
-  val excludeFolderLauncher = rememberLauncherForActivityResult(
-    ActivityResultContracts.OpenDocumentTree()
-  ) { uri ->
-    uri?.let {
-      persistUri(it)
-      val picked = StoragePaths.uriToPath(it)
-      if (picked == null) {
-        excludeError = "URI SAF non-primary belum didukung."
-      } else {
-        addExcludePath(picked)
-      }
-    }
-  }
-
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text("Pengaturan") },
-    text = {
-      Column(
-        Modifier
-          .fillMaxWidth()
-          .height(480.dp)
-          .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-      ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text("Mode tampilan", fontWeight = FontWeight.SemiBold)
-          Text(
-            "Siang / malam / ikuti HP.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(
-              "system" to "Sistem",
-              "light" to "Siang",
-              "dark" to "Malam"
-            ).forEach { (value, label) ->
-              val selected = mode == value
-              if (selected) {
-                Button(onClick = { }) { Text(label) }
-              } else {
-                OutlinedButton(onClick = {
-                  mode = value
-                  onThemeModeChange(value)
-                }) { Text(label) }
-              }
-            }
-          }
-        }
-        Row(
-          Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          Column(Modifier.weight(1f)) {
-            Text("Warna dinamis", fontWeight = FontWeight.SemiBold)
-            Text(
-              "Ikuti warna wallpaper (Material You). Nonaktifkan untuk tema Sortit.",
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-          }
-          Switch(
-            checked = dynamicColor,
-            onCheckedChange = { dynamicColor = it; onDynamicColorChange(it) }
-          )
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text("Sampah otomatis", fontWeight = FontWeight.SemiBold)
-          Text(
-            "Hapus file di trash setelah $retentionDays hari",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-          Slider(
-            value = retentionDays.toFloat(),
-            onValueChange = { retentionDays = it.toInt() },
-            onValueChangeFinished = { app.prefs.trashRetentionDays = retentionDays },
-            valueRange = 1f..90f,
-            steps = 0
-          )
-          Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("1 hari", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("90 hari", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-          }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text("Path dikecualikan (global)", fontWeight = FontWeight.SemiBold)
-          Text(
-            "Berlaku semua scan & aksi. Folder + isinya tidak ikut discan. Override rule.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-          OutlinedButton(onClick = { excludeFolderLauncher.launch(null) }) {
-            Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.size(6.dp))
-            Text("Tambah folder")
-          }
-          excludeError?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-          }
-          if (globalExcludes.isEmpty()) {
-            Text(
-              "Belum ada. Contoh: Download, folder kerja, backup.",
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-          } else {
-            globalExcludes.forEach { path ->
-              Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-              ) {
-                Text(
-                  path,
-                  modifier = Modifier.weight(1f),
-                  style = MaterialTheme.typography.bodySmall,
-                  fontFamily = FontFamily.Monospace
-                )
-                IconButton(onClick = {
-                  scope.launch {
-                    excludeRepo.removeGlobal(path)
-                    reloadTick++
-                  }
-                }) {
-                  Icon(Icons.Default.Close, contentDescription = "Hapus exclude")
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    confirmButton = { TextButton(onClick = onDismiss) { Text("Tutup") } }
-  )
 }
 
 @Composable
@@ -437,44 +240,40 @@ private fun ScanLauncherDialog(
 ) {
   val enabled = templates.filter { it.enabled }
   var selected by remember { mutableStateOf(enabled.map { it.id }.toSet()) }
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text("Scan rule") },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Pilih rule yang akan discan bersamaan. Hasilnya masuk satu review.")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          TextButton(onClick = { selected = enabled.map { it.id }.toSet() }) { Text("Pilih semua") }
-          TextButton(onClick = { selected = emptySet() }) { Text("Bersihkan") }
-        }
-        if (enabled.isEmpty()) {
-          Text("Belum ada rule aktif.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        } else {
-          androidx.compose.foundation.lazy.LazyColumn(Modifier.height(360.dp)) {
-            items(enabled.size) { idx ->
-              val t = enabled[idx]
-              Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                Checkbox(
-                  checked = t.id in selected,
-                  onCheckedChange = { sel -> selected = if (sel) selected + t.id else selected - t.id }
-                )
-                Spacer(Modifier.width(8.dp))
-                Column {
-                  Text(t.name, fontWeight = FontWeight.SemiBold)
-                  Text(t.extensions, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                }
-              }
-            }
-          }
-        }
-      }
-    },
+  SortitDialog(
+    title = "Scan rule",
+    onDismiss = onDismiss,
     confirmButton = {
       Button(onClick = { onScan(selected.toList()) }, enabled = selected.isNotEmpty()) { Text("Scan") }
     },
     dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } }
-  )
+  ) {
+    Text("Pilih rule yang akan discan bersamaan. Hasilnya masuk satu review.")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      TextButton(onClick = { selected = enabled.map { it.id }.toSet() }) { Text("Pilih semua") }
+      TextButton(onClick = { selected = emptySet() }) { Text("Bersihkan") }
+    }
+    if (enabled.isEmpty()) {
+      Text("Belum ada rule aktif.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    } else {
+      // Column biasa (bukan LazyColumn) karena SortitDialog sudah verticalScroll —
+      // nested lazy scroll di dialog bikin gesture macet.
+      enabled.forEach { t ->
+        Row(
+          Modifier.fillMaxWidth().padding(vertical = 4.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Checkbox(
+            checked = t.id in selected,
+            onCheckedChange = { sel -> selected = if (sel) selected + t.id else selected - t.id }
+          )
+          Spacer(Modifier.width(8.dp))
+          Column {
+            Text(t.name, fontWeight = FontWeight.SemiBold)
+            Text(t.extensions, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+          }
+        }
+      }
+    }
+  }
 }

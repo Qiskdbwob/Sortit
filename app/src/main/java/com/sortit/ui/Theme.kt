@@ -15,6 +15,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -112,17 +113,18 @@ private val Dark = darkColorScheme(
 )
 
 private val AppShapes = Shapes(
-    extraSmall = RoundedCornerShape(3.dp),
-    small = RoundedCornerShape(4.dp),
-    medium = RoundedCornerShape(4.dp),
-    large = RoundedCornerShape(5.dp),
-    extraLarge = RoundedCornerShape(6.dp)
+    extraSmall = RoundedCornerShape(6.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(20.dp)
 )
 
 private val BaseType = Typography()
 private val AppTypography = BaseType.copy(
     labelSmall = BaseType.labelSmall.copy(letterSpacing = 0.8.sp),
     labelMedium = BaseType.labelMedium.copy(letterSpacing = 0.4.sp),
+    titleMedium = BaseType.titleMedium.copy(fontWeight = FontWeight.SemiBold),
     titleLarge = BaseType.titleLarge.copy(letterSpacing = (-0.2).sp)
 )
 

@@ -22,18 +22,16 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoveUp
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -53,13 +51,16 @@ import androidx.compose.ui.unit.dp
 import com.sortit.data.MonitorEntity
 import com.sortit.domain.FileItem
 import com.sortit.domain.ScanPathUseCase
-import com.sortit.repo.FileOps
+import com.sortit.repo.RealFileOps
 import com.sortit.ui.components.DashedDivider
 import com.sortit.ui.components.EmptyState
+import com.sortit.ui.components.InfoBanner
 import com.sortit.ui.components.Kicker
 import com.sortit.ui.components.MediaThumb
 import com.sortit.ui.components.MonoText
 import com.sortit.ui.components.OneLinePath
+import com.sortit.ui.components.PathInputField
+import com.sortit.ui.components.SortitDialog
 import com.sortit.ui.components.StampBadge
 import com.sortit.ui.components.StampKind
 import com.sortit.ui.components.Ticket
@@ -78,6 +79,7 @@ import kotlinx.coroutines.withContext
 fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
   val list by vm.monitors.collectAsState()
   val autoMsg by vm.autoMsg.collectAsState()
+  val operationMsg by vm.operationMsg.collectAsState()
   var showAdd by remember { mutableStateOf(false) }
   var editing by remember { mutableStateOf<MonitorEntity?>(null) }
 
@@ -109,8 +111,18 @@ fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
     }
     autoMsg?.let { msg ->
       item {
-        Text(msg, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
-        TextButton(onClick = { vm.clearAutoMsg() }) { Text("Tutup") }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+          InfoBanner(msg, kind = StampKind.MOVE)
+          TextButton(onClick = { vm.clearAutoMsg() }) { Text("Tutup") }
+        }
+      }
+    }
+    operationMsg?.let { msg ->
+      item {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+          InfoBanner(msg, kind = StampKind.MOVE)
+          TextButton(onClick = { vm.clearOperationMsg() }) { Text("Tutup") }
+        }
       }
     }
     if (list.isEmpty()) {
@@ -151,12 +163,15 @@ fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
 @Composable
 private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Unit) {
   val context = LocalContext.current
-  val scan = remember { ScanPathUseCase(RealFileOpsHolder.ops) }
+  val scan = remember { ScanPathUseCase(RealFileOps()) }
   val paths = remember(m.path) { splitMonitorPaths(m.path) }
+  val tick by vm.refreshTick.collectAsState()
+  val busy by vm.operationBusy.collectAsState()
   val inspection by produceState<ScanPathUseCase.PathInspection?>(
     initialValue = null,
     m.path,
-    m.enabled
+    m.enabled,
+    tick
   ) {
     value = withContext(Dispatchers.IO) {
       if (m.enabled) scan.inspect(m.path, ScanPathUseCase.DEFAULT_MAX) else null
@@ -175,25 +190,9 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Un
       )
     }
     val destDir = StoragePaths.uriToPath(uri) ?: return@rememberLauncherForActivityResult
-    selectedPaths.forEach { path ->
-      val file = File(path)
-      if (!file.exists()) return@forEach
-      val subDir = "$destDir/${extensionFolder(file.name)}"
-      File(subDir).mkdirs()
-      val target = File(subDir, file.name)
-      if (!file.renameTo(target)) {
-        runCatching {
-          file.inputStream().use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
-          }
-          if (target.exists() && target.length() == file.length()) file.delete()
-        }
-      }
-    }
+    vm.moveSelected(selectedPaths, destDir)
     selectMode = false
     selectedPaths = emptySet()
-    // force re-inspect by toggling showFiles state consumer via reassignment
-    showFiles = showFiles
   }
 
   Ticket(accent = if (m.enabled) MaterialTheme.colorScheme.primary else null) {
@@ -269,6 +268,14 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Un
         if (showFiles) {
           DashedDivider(Modifier.fillMaxWidth().height(1.dp), vertical = false)
 
+          if (inspection!!.truncated) {
+            InfoBanner(
+              "Menampilkan ${inspection!!.files.size} dari ${inspection!!.fileCount} file. " +
+                "Gunakan 'Pilih semua' untuk memproses semua."
+            )
+            Spacer(Modifier.height(2.dp))
+          }
+
           // Lazy list capped for UI — avoid composing thousands of rows
           val uiFiles = remember(inspection) {
             inspection!!.files.take(ScanPathUseCase.PREVIEW_UI)
@@ -318,37 +325,28 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Un
               style = MaterialTheme.typography.labelLarge
             )
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-              IconButton(onClick = {
-                // Ambil sampai MOVE_ALL_MAX biar file di luar preview UI ikut
-                val all = scan.inspect(m.path, ScanPathUseCase.MOVE_ALL_MAX).files.map { it.path }.toSet()
-                selectedPaths = all.ifEmpty { inspection?.files?.map { it.path }?.toSet() ?: selectedPaths }
-              }) {
+              IconButton(
+                enabled = !busy,
+                onClick = {
+                  // Ambil sampai MOVE_ALL_MAX biar file di luar preview UI ikut
+                  val all = scan.inspect(m.path, ScanPathUseCase.MOVE_ALL_MAX).files.map { it.path }.toSet()
+                  selectedPaths = all.ifEmpty { inspection?.files?.map { it.path }?.toSet() ?: selectedPaths }
+                }
+              ) {
                 Icon(Icons.Default.SelectAll, contentDescription = "Pilih semua")
               }
-              IconButton(onClick = { safLauncher.launch(null) }) {
+              IconButton(enabled = !busy, onClick = { safLauncher.launch(null) }) {
                 Icon(Icons.Default.MoveUp, contentDescription = "Pindah")
               }
-              IconButton(onClick = {
-                selectedPaths.forEach { path ->
-                  val file = File(path)
-                  if (!file.exists()) return@forEach
-                  val ext = extensionFolder(file.name)
-                  val trashDir = "${FileOps.TRASH_ROOT}/$ext"
-                  File(trashDir).mkdirs()
-                  val target = File(trashDir, file.name)
-                  if (!file.renameTo(target)) {
-                    runCatching {
-                      file.inputStream().use { input ->
-                        target.outputStream().use { output -> input.copyTo(output) }
-                      }
-                      if (target.exists()) file.delete()
-                    }
-                  }
+              IconButton(
+                enabled = !busy,
+                onClick = {
+                  vm.trashSelected(selectedPaths)
+                  selectMode = false
+                  selectedPaths = emptySet()
                 }
-                selectMode = false
-                selectedPaths = emptySet()
-              }) {
-                Icon(Icons.Default.Delete, contentDescription = "Hapus")
+              ) {
+                Icon(Icons.Default.Delete, contentDescription = "Trash")
               }
               IconButton(onClick = {
                 selectMode = false
@@ -362,11 +360,6 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Un
       }
     }
   }
-}
-
-private fun extensionFolder(name: String): String {
-  val dot = name.lastIndexOf('.')
-  return if (dot > 0 && dot < name.length - 1) name.substring(dot + 1).lowercase() else "other"
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -408,6 +401,20 @@ private fun MonitorFileRow(
 }
 
 @Composable
+private fun ExtraPathRow(path: String, onRemove: () -> Unit) {
+  Row(verticalAlignment = Alignment.CenterVertically) {
+    OneLinePath(path, Modifier.weight(1f))
+    IconButton(onClick = onRemove) {
+      Icon(
+        Icons.Default.Close,
+        contentDescription = "Hapus folder",
+        modifier = Modifier.size(16.dp)
+      )
+    }
+  }
+}
+
+@Composable
 private fun AddMonitorDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
   val context = LocalContext.current
   var name by remember { mutableStateOf("") }
@@ -444,48 +451,9 @@ private fun AddMonitorDialog(onDismiss: () -> Unit, onAdd: (String, String) -> U
     return null
   }
 
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text("Pemantau path") },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedTextField(
-          value = name,
-          onValueChange = { name = it; error = null },
-          label = { Text("Nama") },
-          singleLine = true
-        )
-        OutlinedTextField(
-          value = path,
-          onValueChange = { path = it; error = null },
-          label = { Text("Path utama") }
-        )
-        if (extraPaths.isNotEmpty()) {
-          Text(
-            "Folder tambahan (${extraPaths.size}):",
-            style = MaterialTheme.typography.labelMedium
-          )
-          extraPaths.forEach { p ->
-            MonoText(p, style = MaterialTheme.typography.bodySmall)
-          }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          OutlinedButton(onClick = { launcher.launch(null) }) {
-            Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.size(6.dp))
-            Text(if (path.isBlank()) "Pilih folder" else "Tambah folder")
-          }
-        }
-        Text(
-          "Bisa multi-folder: pilih berulang (mis. Documents + Sent + Private).",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        if (error != null) {
-          Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
-      }
-    },
+  SortitDialog(
+    title = "Pemantau path",
+    onDismiss = onDismiss,
     confirmButton = {
       Button(onClick = {
         val e = validate()
@@ -497,7 +465,42 @@ private fun AddMonitorDialog(onDismiss: () -> Unit, onAdd: (String, String) -> U
       }) { Text("Tambah") }
     },
     dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } }
-  )
+  ) {
+    PathInputField(
+      value = name,
+      onValueChange = { name = it; error = null },
+      label = "Nama",
+      onPickFolder = null
+    )
+    PathInputField(
+      value = path,
+      onValueChange = { path = it; error = null },
+      label = "Path utama",
+      onPickFolder = { launcher.launch(null) }
+    )
+    if (extraPaths.isNotEmpty()) {
+      Text(
+        "Folder tambahan (${extraPaths.size}):",
+        style = MaterialTheme.typography.labelMedium
+      )
+      extraPaths.forEach { p ->
+        ExtraPathRow(p, onRemove = { extraPaths = extraPaths - p })
+      }
+    }
+    OutlinedButton(onClick = { launcher.launch(null) }) {
+      Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
+      Spacer(Modifier.size(6.dp))
+      Text(if (path.isBlank()) "Pilih folder" else "Tambah folder")
+    }
+    Text(
+      "Bisa multi-folder: pilih berulang (mis. Documents + Sent + Private).",
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    if (error != null) {
+      Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    }
+  }
 }
 
 @Composable
@@ -538,36 +541,9 @@ private fun EditMonitorDialog(
     return null
   }
 
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text("Edit pemantau path") },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedTextField(
-          value = name,
-          onValueChange = { name = it; error = null },
-          label = { Text("Nama") },
-          singleLine = true
-        )
-        OutlinedTextField(
-          value = path,
-          onValueChange = { path = it; error = null },
-          label = { Text("Path utama") }
-        )
-        if (extraPaths.isNotEmpty()) {
-          Text("Folder tambahan (${extraPaths.size}):", style = MaterialTheme.typography.labelMedium)
-          extraPaths.forEach { MonoText(it, style = MaterialTheme.typography.bodySmall) }
-        }
-        OutlinedButton(onClick = { launcher.launch(null) }) {
-          Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
-          Spacer(Modifier.size(6.dp))
-          Text("Tambah / ganti folder")
-        }
-        if (error != null) {
-          Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
-      }
-    },
+  SortitDialog(
+    title = "Edit pemantau path",
+    onDismiss = onDismiss,
     confirmButton = {
       Button(onClick = {
         val e = validate()
@@ -579,5 +555,32 @@ private fun EditMonitorDialog(
       }) { Text("Simpan") }
     },
     dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } }
-  )
+  ) {
+    PathInputField(
+      value = name,
+      onValueChange = { name = it; error = null },
+      label = "Nama",
+      onPickFolder = null
+    )
+    PathInputField(
+      value = path,
+      onValueChange = { path = it; error = null },
+      label = "Path utama",
+      onPickFolder = { launcher.launch(null) }
+    )
+    if (extraPaths.isNotEmpty()) {
+      Text("Folder tambahan (${extraPaths.size}):", style = MaterialTheme.typography.labelMedium)
+      extraPaths.forEach { p ->
+        ExtraPathRow(p, onRemove = { extraPaths = extraPaths - p })
+      }
+    }
+    OutlinedButton(onClick = { launcher.launch(null) }) {
+      Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
+      Spacer(Modifier.size(6.dp))
+      Text("Tambah / ganti folder")
+    }
+    if (error != null) {
+      Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    }
+  }
 }
