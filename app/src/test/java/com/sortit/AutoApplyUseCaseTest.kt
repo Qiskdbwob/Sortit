@@ -1,9 +1,8 @@
 package com.sortit
 
-import com.sortit.data.SortLogDao
-import com.sortit.data.SortLogEntity
 import com.sortit.data.TemplateEntity
 import com.sortit.domain.AutoApplyUseCase
+import com.sortit.domain.FakeLogDao
 import com.sortit.repo.ExcludeRepository
 import com.sortit.repo.FileOps
 import com.sortit.repo.TemplateRepository
@@ -12,22 +11,98 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.argumentCaptor
-import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.never
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 import java.io.File
 
+/** File palsu: override method final-ish yang dipakai UseCase tanpa mockito. */
+private fun testFile(
+    path: String,
+    size: Long = 100L,
+    lastMod: Long = System.currentTimeMillis()
+): File = object : File(path) {
+    override fun isFile(): Boolean = true
+    override fun isDirectory(): Boolean = false
+    override fun exists(): Boolean = true
+    override fun length(): Long = size
+    override fun lastModified(): Long = lastMod
+    override fun getAbsolutePath(): String = path
+    override fun getName(): String = path.substringAfterLast('/')
+    override fun canRead(): Boolean = true
+}
+
+private class MapFileOps : FileOps {
+    private val store = linkedMapOf<String, File>()
+    val moved = mutableListOf<Pair<String, String>>()
+    private val readableDirs = mutableSetOf<String>()
+    private val existingDirs = mutableSetOf<String>()
+    var failMove = false
+
+    fun put(path: String, size: Long = 100L, lastMod: Long = System.currentTimeMillis()) {
+        store[path] = testFile(path, size, lastMod)
+        val parent = path.substringBeforeLast('/', "")
+        if (parent.isNotBlank()) {
+            readableDirs += parent
+            existingDirs += parent
+        }
+    }
+
+    fun markDir(path: String, readable: Boolean = true, exists: Boolean = true) {
+        val p = path.trimEnd('/')
+        if (exists) existingDirs += p
+        if (readable) readableDirs += p else readableDirs -= p
+    }
+
+    override fun listFiles(dir: String): List<File> {
+        val prefix = dir.trimEnd('/') + "/"
+        return store.values.filter {
+            val p = it.absolutePath
+            p.startsWith(prefix) && !p.removePrefix(prefix).contains('/')
+        }
+    }
+
+    override fun walkDeep(dir: String): Sequence<File> {
+        val p = dir.trimEnd('/')
+        return store.values.asSequence().filter {
+            it.absolutePath == p || it.absolutePath.startsWith("$p/")
+        }
+    }
+
+    override fun exists(path: String): Boolean =
+        store.containsKey(path) || existingDirs.contains(path.trimEnd('/'))
+
+    override fun size(path: String): Long = store[path]?.length() ?: 0
+    override fun lastModified(path: String): Long = store[path]?.lastModified() ?: 0
+    override fun mimeOf(file: File): String? = null
+
+    override fun move(src: String, dstDir: String): String? {
+        if (failMove) return null
+        val f = store.remove(src) ?: return null
+        moved += src to dstDir
+        val dst = "$dstDir/${f.name}"
+        store[dst] = testFile(dst, f.length(), f.lastModified())
+        return dst
+    }
+
+    override fun moveToTrash(src: String): String? = move(src, FileOps.TRASH_ROOT)
+    override fun mkdirs(dir: String): Boolean {
+        existingDirs += dir.trimEnd('/')
+        readableDirs += dir.trimEnd('/')
+        return true
+    }
+
+    override fun isReadableDir(path: String): Boolean = readableDirs.contains(path.trimEnd('/'))
+    override fun childCount(path: String): Int = listFiles(path).size
+    override fun restore(src: String, dstDir: String): String? = move(src, dstDir)
+    override fun listTrashFiles(): List<File> =
+        store.values.filter { it.absolutePath.startsWith(FileOps.TRASH_ROOT) }
+    override fun deleteFile(path: String): Boolean = store.remove(path) != null
+}
+
 class AutoApplyUseCaseTest {
 
-    private val fileOps = mock<FileOps>()
     private val templateRepo = mock<TemplateRepository>()
     private val excludeRepo = mock<ExcludeRepository>()
-    private val logDao = mock<SortLogDao>()
-    private val useCase = AutoApplyUseCase(fileOps, templateRepo, excludeRepo, logDao)
 
     private fun rule(
         id: Long = 1L,
@@ -42,180 +117,201 @@ class AutoApplyUseCaseTest {
         maxSizeBytes: Long = 0L,
         maxAgeDays: Int = 0
     ) = TemplateEntity(
-        id = id, name = "r$id", extensions = extensions, targetTreeUri = targetTreeUri,
-        sourceMode = sourceMode, sourceDirs = sourceDirs, enabled = enabled,
-        minSizeBytes = minSizeBytes, maxSizeBytes = maxSizeBytes, maxAgeDays = maxAgeDays,
-        autoEnabled = autoEnabled, autoAction = autoAction
+        id = id,
+        name = "r$id",
+        extensions = extensions,
+        targetTreeUri = targetTreeUri,
+        sourceMode = sourceMode,
+        sourceDirs = sourceDirs,
+        enabled = enabled,
+        minSizeBytes = minSizeBytes,
+        maxSizeBytes = maxSizeBytes,
+        maxAgeDays = maxAgeDays,
+        autoEnabled = autoEnabled,
+        autoAction = autoAction
     )
-
-    private fun fakeFile(path: String, size: Long = 100L, lastMod: Long = System.currentTimeMillis()): File {
-        val f = mock<File>()
-        whenever(f.absolutePath).thenReturn(path)
-        whenever(f.name).thenReturn(path.substringAfterLast('/'))
-        whenever(f.isFile).thenReturn(true)
-        whenever(f.length()).thenReturn(size)
-        whenever(f.lastModified()).thenReturn(lastMod)
-        return f
-    }
 
     private suspend fun stubNoExcludes() {
         whenever(excludeRepo.patternsForScan(any())).thenReturn(emptySet())
     }
 
     @Test
-    fun `applyAllEnabled returns empty result when no auto rules`() = runBlocking {
+    fun applyAllEnabled_emptyWhenNoAutoRules() = runBlocking {
         whenever(templateRepo.getAllOnce()).thenReturn(emptyList())
+        val ops = MapFileOps()
+        val log = FakeLogDao()
+        val useCase = AutoApplyUseCase(ops, templateRepo, excludeRepo, log)
 
         val r = useCase.applyAllEnabled()
 
         assertEquals(AutoApplyUseCase.Result(), r)
-        verifyNoInteractions(fileOps)
-        verifyNoInteractions(logDao)
+        assertTrue(ops.moved.isEmpty())
+        assertTrue(log.rows.isEmpty())
+        Unit
     }
 
     @Test
-    fun `rule with autoEnabled but disabled is skipped`() = runBlocking {
+    fun disabledRule_isSkipped() = runBlocking {
         whenever(templateRepo.getAllOnce()).thenReturn(listOf(rule(enabled = false)))
+        val ops = MapFileOps()
+        val useCase = AutoApplyUseCase(ops, templateRepo, excludeRepo, FakeLogDao())
 
         val r = useCase.applyAllEnabled()
 
         assertEquals(AutoApplyUseCase.Result(), r)
-        verifyNoInteractions(fileOps)
+        assertTrue(ops.moved.isEmpty())
+        Unit
     }
 
     @Test
-    fun `matching file is moved and logged OK`() = runBlocking {
+    fun matchingFile_isMovedAndLoggedOk() = runBlocking {
         whenever(templateRepo.getAllOnce()).thenReturn(listOf(rule()))
         stubNoExcludes()
-        whenever(fileOps.isReadableDir("/src")).thenReturn(true)
-        whenever(fileOps.listFiles("/src")).thenReturn(listOf(fakeFile("/src/a.txt")))
-        whenever(fileOps.move(eq("/src/a.txt"), eq("/out/txt"))).thenReturn("/out/txt/a.txt")
+        val ops = MapFileOps().also { it.put("/src/a.txt") }
+        val log = FakeLogDao()
+        val useCase = AutoApplyUseCase(ops, templateRepo, excludeRepo, log)
 
         val r = useCase.applyAllEnabled()
 
         assertEquals(1, r.moved)
         assertEquals(0, r.failed)
-        verify(fileOps).move("/src/a.txt", "/out/txt")
-        val log = argumentCaptor<SortLogEntity>()
-        verify(logDao).insert(log.capture())
-        assertEquals("OK", log.firstValue.status)
-        assertEquals("/out/txt/a.txt", log.firstValue.dstPath)
-        assertEquals("a.txt", log.firstValue.fileName)
+        assertEquals(listOf("/src/a.txt" to "/out/txt"), ops.moved)
+        assertEquals(1, log.rows.size)
+        assertEquals("OK", log.rows[0].status)
+        assertEquals("/out/txt/a.txt", log.rows[0].dstPath)
+        assertEquals("a.txt", log.rows[0].fileName)
+        Unit
     }
 
     @Test
-    fun `file below minSize is skipped`() = runBlocking {
+    fun fileBelowMinSize_isSkipped() = runBlocking {
         whenever(templateRepo.getAllOnce()).thenReturn(listOf(rule(minSizeBytes = 1000)))
         stubNoExcludes()
-        whenever(fileOps.isReadableDir("/src")).thenReturn(true)
-        whenever(fileOps.listFiles("/src")).thenReturn(listOf(fakeFile("/src/a.txt", size = 10)))
+        val ops = MapFileOps().also { it.put("/src/a.txt", size = 10) }
+        val useCase = AutoApplyUseCase(ops, templateRepo, excludeRepo, FakeLogDao())
 
         val r = useCase.applyAllEnabled()
 
         assertEquals(0, r.moved)
         assertEquals(1, r.skipped)
-        verify(fileOps, never()).move(any(), any())
+        assertTrue(ops.moved.isEmpty())
+        Unit
     }
 
     @Test
-    fun `per-rule excluded file is skipped`() = runBlocking {
+    fun perRuleExcludedFile_isSkipped() = runBlocking {
         whenever(templateRepo.getAllOnce()).thenReturn(listOf(rule()))
         whenever(excludeRepo.patternsForScan(any())).thenReturn(setOf("/src/skip.txt"))
-        whenever(fileOps.isReadableDir("/src")).thenReturn(true)
-        whenever(fileOps.listFiles("/src")).thenReturn(listOf(fakeFile("/src/skip.txt")))
+        val ops = MapFileOps().also { it.put("/src/skip.txt") }
+        val useCase = AutoApplyUseCase(ops, templateRepo, excludeRepo, FakeLogDao())
 
         val r = useCase.applyAllEnabled()
 
         assertEquals(0, r.moved)
         assertEquals(1, r.skipped)
-        verify(fileOps, never()).move(any(), any())
+        assertTrue(ops.moved.isEmpty())
+        Unit
     }
 
     @Test
-    fun `system path root is skipped`() = runBlocking {
+    fun systemPathRoot_isSkipped() = runBlocking {
         whenever(templateRepo.getAllOnce()).thenReturn(listOf(rule(sourceDirs = "/system/x")))
         stubNoExcludes()
+        val ops = MapFileOps()
+        val useCase = AutoApplyUseCase(ops, templateRepo, excludeRepo, FakeLogDao())
 
         val r = useCase.applyAllEnabled()
 
         assertEquals(0, r.moved)
         assertEquals(1, r.skipped)
-        verify(fileOps, never()).move(any(), any())
+        assertTrue(ops.moved.isEmpty())
+        Unit
     }
 
     @Test
-    fun `TRASH action moves file under trash root`() = runBlocking {
+    fun trashAction_movesUnderTrashRoot() = runBlocking {
         whenever(templateRepo.getAllOnce()).thenReturn(listOf(rule(autoAction = "TRASH")))
         stubNoExcludes()
-        whenever(fileOps.isReadableDir("/src")).thenReturn(true)
-        whenever(fileOps.listFiles("/src")).thenReturn(listOf(fakeFile("/src/a.txt")))
-        whenever(fileOps.move(eq("/src/a.txt"), eq("${FileOps.TRASH_ROOT}/txt")))
-            .thenReturn("${FileOps.TRASH_ROOT}/txt/a.txt")
+        val ops = MapFileOps().also { it.put("/src/a.txt") }
+        val useCase = AutoApplyUseCase(ops, templateRepo, excludeRepo, FakeLogDao())
 
         val r = useCase.applyAllEnabled()
 
         assertEquals(1, r.trashed)
         assertEquals(0, r.moved)
-        val dstDir = argumentCaptor<String>()
-        verify(fileOps).move(eq("/src/a.txt"), dstDir.capture())
-        assertTrue(dstDir.firstValue.contains(".sortit-trash"))
+        assertEquals(1, ops.moved.size)
+        assertTrue(ops.moved[0].second.contains(".sortit-trash"))
+        Unit
     }
 
     @Test
-    fun `failed move increments failed and logs FAIL`() = runBlocking {
+    fun failedMove_incrementsFailedAndLogsFail() = runBlocking {
         whenever(templateRepo.getAllOnce()).thenReturn(listOf(rule()))
         stubNoExcludes()
-        whenever(fileOps.isReadableDir("/src")).thenReturn(true)
-        whenever(fileOps.listFiles("/src")).thenReturn(listOf(fakeFile("/src/a.txt")))
-        whenever(fileOps.move(any(), any())).thenReturn(null)
+        val ops = MapFileOps().also {
+            it.put("/src/a.txt")
+            it.failMove = true
+        }
+        val log = FakeLogDao()
+        val useCase = AutoApplyUseCase(ops, templateRepo, excludeRepo, log)
 
         val r = useCase.applyAllEnabled()
 
         assertEquals(0, r.moved)
         assertEquals(1, r.failed)
-        val log = argumentCaptor<SortLogEntity>()
-        verify(logDao).insert(log.capture())
-        assertEquals("FAIL", log.firstValue.status)
-        assertEquals("", log.firstValue.dstPath)
+        assertEquals(1, log.rows.size)
+        assertEquals("FAIL", log.rows[0].status)
+        assertEquals("", log.rows[0].dstPath)
+        Unit
     }
 
     @Test
-    fun `applyForMonitorPaths skips FOLDERS rule without path intersection`() = runBlocking {
+    fun applyForMonitorPaths_skipsFoldersWithoutIntersection() = runBlocking {
         whenever(templateRepo.getAllOnce()).thenReturn(listOf(rule(sourceDirs = "/other")))
+        val ops = MapFileOps()
+        val useCase = AutoApplyUseCase(ops, templateRepo, excludeRepo, FakeLogDao())
 
         val r = useCase.applyForMonitorPaths("/mon")
 
         assertEquals(AutoApplyUseCase.Result(), r)
-        verifyNoInteractions(fileOps)
+        assertTrue(ops.moved.isEmpty())
+        Unit
     }
 
     @Test
-    fun `applyForMonitorPaths processes FOLDERS rule with intersection`() = runBlocking {
+    fun applyForMonitorPaths_processesFoldersWithIntersection() = runBlocking {
         whenever(templateRepo.getAllOnce()).thenReturn(listOf(rule(sourceDirs = "/mon/sub")))
         stubNoExcludes()
-        whenever(fileOps.isReadableDir("/mon/sub")).thenReturn(true)
-        whenever(fileOps.listFiles("/mon/sub")).thenReturn(listOf(fakeFile("/mon/sub/a.txt")))
-        whenever(fileOps.move(eq("/mon/sub/a.txt"), eq("/out/txt"))).thenReturn("/out/txt/a.txt")
+        val ops = MapFileOps().also { it.put("/mon/sub/a.txt") }
+        val useCase = AutoApplyUseCase(ops, templateRepo, excludeRepo, FakeLogDao())
 
         val r = useCase.applyForMonitorPaths("/mon")
 
         assertEquals(1, r.moved)
-        verify(fileOps).move("/mon/sub/a.txt", "/out/txt")
+        assertEquals(listOf("/mon/sub/a.txt" to "/out/txt"), ops.moved)
+        Unit
     }
 
     @Test
-    fun `applyForMonitorPaths ALL rule only scans monitor path not storage root`() = runBlocking {
-        whenever(templateRepo.getAllOnce()).thenReturn(listOf(rule(sourceMode = "ALL", sourceDirs = null)))
+    fun applyForMonitorPaths_allRuleOnlyScansMonitorPath() = runBlocking {
+        whenever(templateRepo.getAllOnce()).thenReturn(
+            listOf(rule(sourceMode = "ALL", sourceDirs = null))
+        )
         stubNoExcludes()
         val mp = "/storage/emulated/0/Download"
-        whenever(fileOps.isReadableDir(mp)).thenReturn(true)
-        whenever(fileOps.listFiles(mp)).thenReturn(listOf(fakeFile("$mp/a.txt")))
-        whenever(fileOps.move(eq("$mp/a.txt"), eq("/out/txt"))).thenReturn("/out/txt/a.txt")
+        val ops = MapFileOps().also {
+            it.put("$mp/a.txt")
+            it.put("/storage/emulated/0/Other/b.txt")
+            // ALL resolveRoots = /storage/emulated/0, but applyForMonitorPaths ALL
+            // only uses monitor paths as roots
+            it.markDir(mp, readable = true)
+        }
+        val useCase = AutoApplyUseCase(ops, templateRepo, excludeRepo, FakeLogDao())
 
         val r = useCase.applyForMonitorPaths(mp)
 
         assertEquals(1, r.moved)
-        verify(fileOps).listFiles(mp)
-        verify(fileOps, never()).listFiles("/storage/emulated/0")
+        assertEquals(listOf("$mp/a.txt" to "/out/txt"), ops.moved)
+        Unit
     }
 }
