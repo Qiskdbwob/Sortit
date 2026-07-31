@@ -16,6 +16,7 @@ import com.sortit.data.AppDatabase
 import com.sortit.repo.RealFileOps
 import com.sortit.repo.SeedUseCase
 import com.sortit.util.AutoApplyWorker
+import com.sortit.util.NotifHelper
 import com.sortit.util.Prefs
 import com.sortit.util.TrashCleanupWorker
 import java.util.concurrent.TimeUnit

@@ -358,8 +358,10 @@ private fun FilterChipRow(
   options: List<String>,
   onSelect: (String?) -> Unit
 ) {
-  androidx.compose.foundation.horizontalScroll(rememberScrollState()) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+  Row(
+    modifier = Modifier.horizontalScroll(rememberScrollState()),
+    horizontalArrangement = Arrangement.spacedBy(6.dp)
+  ) {
       androidx.compose.material3.FilterChip(
         selected = selected == null,
         onClick = { onSelect(null) },
@@ -372,7 +374,6 @@ private fun FilterChipRow(
           label = { Text(e) }
         )
       }
-    }
   }
 }
 
