@@ -19,8 +19,9 @@ class AutoApplyWorker(
       val app = applicationContext as? SortitApplication ?: return Result.failure()
       val templateRepo = TemplateRepository(app.db)
       val excludeRepo = ExcludeRepository(app.db)
-      AutoApplyUseCase(app.fileOps, templateRepo, excludeRepo, app.db.sortLogDao())
+      val r = AutoApplyUseCase(app.fileOps, templateRepo, excludeRepo, app.db.sortLogDao())
         .applyAllEnabled()
+      NotifHelper.showAutoResult(applicationContext, r.moved, r.trashed, r.failed)
       Result.success()
     } catch (e: Exception) {
       Result.retry()

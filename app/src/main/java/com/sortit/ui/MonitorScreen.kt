@@ -270,8 +270,9 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Un
 
           if (inspection!!.truncated) {
             InfoBanner(
-              "Menampilkan ${inspection!!.files.size} dari ${inspection!!.fileCount} file. " +
-                "Gunakan 'Pilih semua' untuk memproses semua."
+              "Menampilkan ${ScanPathUseCase.PREVIEW_UI} dari ${inspection!!.fileCount}+ file. " +
+                "Tekan 'Pilih semua' (☰) untuk memilih semua ${inspection!!.fileCount}+ file sekaligus.",
+              kind = StampKind.WARN
             )
             Spacer(Modifier.height(2.dp))
           }

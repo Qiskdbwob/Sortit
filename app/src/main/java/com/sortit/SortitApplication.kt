@@ -115,6 +115,7 @@ class SortitApplication : Application(), ImageLoaderFactory {
 
   override fun onCreate() {
     super.onCreate()
+    NotifHelper.createChannel(this)
     db = Room.databaseBuilder(this, AppDatabase::class.java, "sortit.db")
       .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
       .build()

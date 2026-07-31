@@ -101,7 +101,8 @@ class AutoApplyUseCase(
                 skipped++; continue
             }
             if (!fileOps.isReadableDir(root)) { skipped++; continue }
-            val files = try { fileOps.listFiles(root).filter { it.isFile } } catch (_: Exception) { emptyList() }
+            // Rekursif (walkDeep) supaya konsisten dengan scan manual.
+            val files = try { fileOps.walkDeep(root).toList() } catch (_: Exception) { emptyList() }
             for (f in files) {
                 val path = f.absolutePath
                 if (SystemExcludes.isSystemPath(path)) { skipped++; continue }
