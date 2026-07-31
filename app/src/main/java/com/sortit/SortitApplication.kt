@@ -120,7 +120,12 @@ class SortitApplication : Application(), ImageLoaderFactory {
       .build()
     prefs = Prefs(this)
     CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-      SeedUseCase(db).seedIfEmpty(prefs)
+      try {
+        SeedUseCase(db).seedIfEmpty(prefs)
+      } catch (t: Throwable) {
+        // Jangan sampai kegagalan seed menggagalkan startup app.
+        // Sesi berikutnya akan mencoba lagi (seedVersion belum naik).
+      }
     }
     WorkManager.getInstance(this).enqueueUniquePeriodicWork(
       "trash_cleanup",

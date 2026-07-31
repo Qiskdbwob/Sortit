@@ -6,12 +6,12 @@ import com.sortit.data.ScanItemEntity
 import com.sortit.data.ScanSessionEntity
 import com.sortit.data.TemplateEntity
 import com.sortit.domain.FileItem
-import com.sortit.domain.PreviewSortUseCase
 import com.sortit.domain.ScanSortUseCase
 import com.sortit.domain.SortFilesUseCase
 import com.sortit.repo.ExcludeRepository
 import com.sortit.repo.ScanSessionRepository
 import com.sortit.repo.TemplateRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -48,18 +48,24 @@ class ScanViewModel(
     private val _state = MutableStateFlow<ScanUiState>(ScanUiState.Idle)
     val state: StateFlow<ScanUiState> = _state
 
-    fun requestScan(ruleIds: List<Long>) = viewModelScope.launch {
-        val templates = templateRepo.getAll(ruleIds.distinct()).filter { it.enabled }
-        if (templates.isEmpty()) {
-            _state.value = ScanUiState.Error("Pilih minimal 1 rule aktif untuk discan.")
-            return@launch
+    /** Job scan aktif — dipakai tombol "Batalkan" supaya benar-benar berhenti. */
+    private var scanJob: Job? = null
+
+    fun requestScan(ruleIds: List<Long>) {
+        if (scanJob?.isActive == true) return
+        scanJob = viewModelScope.launch {
+            val templates = templateRepo.getAll(ruleIds.distinct()).filter { it.enabled }
+            if (templates.isEmpty()) {
+                _state.value = ScanUiState.Error("Pilih minimal 1 rule aktif untuk discan.")
+                return@launch
+            }
+            val active = scanRepo.latestActive()
+            if (active != null) {
+                _state.value = ScanUiState.ExistingPending(active, templates.map { it.id })
+                return@launch
+            }
+            startScan(templates)
         }
-        val active = scanRepo.latestActive()
-        if (active != null) {
-            _state.value = ScanUiState.ExistingPending(active, templates.map { it.id })
-            return@launch
-        }
-        startScan(templates)
     }
 
     fun continuePending(session: ScanSessionEntity) = viewModelScope.launch {
@@ -89,7 +95,10 @@ class ScanViewModel(
         _state.value = ScanUiState.Idle
     }
 
-    fun closePreview() { _state.value = ScanUiState.Idle }
+    fun closePreview() {
+        scanJob?.cancel()
+        _state.value = ScanUiState.Idle
+    }
 
     fun toggleExcluded(itemId: Long, excluded: Boolean) = viewModelScope.launch {
         scanRepo.setExcluded(itemId, excluded)
@@ -106,6 +115,19 @@ class ScanViewModel(
         scanRepo.setAllExcluded(s.sessionId, excluded)
         _state.value = s.copy(items = s.items.map {
             if (it.status == "PENDING" || it.status == "EXCLUDED") it.copy(status = if (excluded) "EXCLUDED" else "PENDING") else it
+        })
+    }
+
+    /** Kecualikan/sertakan SEMUA file yang sedang terfilter (query aktif). */
+    fun setExcludedForPaths(paths: Set<String>, excluded: Boolean) = viewModelScope.launch {
+        val s = _state.value as? ScanUiState.Preview ?: return@launch
+        if (paths.isEmpty()) return@launch
+        s.items.filter { it.path in paths }.forEach { item ->
+            scanRepo.setExcluded(item.id, excluded)
+        }
+        _state.value = s.copy(items = s.items.map {
+            if (it.path in paths && (it.status == "PENDING" || it.status == "EXCLUDED"))
+                it.copy(status = if (excluded) "EXCLUDED" else "PENDING") else it
         })
     }
 
@@ -151,19 +173,25 @@ class ScanViewModel(
         )
     }
 
-    fun reset() { _state.value = ScanUiState.Idle }
+    fun reset() {
+        scanJob?.cancel()
+        scanJob = null
+        _state.value = ScanUiState.Idle
+    }
 
     private suspend fun startScan(templates: List<TemplateEntity>) {
         // Global exclude (templateId=0) + per-rule; global menang di filter yang sama.
         val excludes = excludeRepo.patternsForScan(templates.map { it.id })
-        val candidates = mutableListOf<PreviewSortUseCase.ScannedFile>()
+        val candidates = mutableListOf<Pair<Long, FileItem>>()
         _state.value = ScanUiState.Scanning(0, 0, "")
         scan.executeMany(templates, excludes) { templateId, item ->
-            candidates.add(PreviewSortUseCase.ScannedFile(templateId, item))
+            candidates.add(templateId to item)
         }.collect { p ->
+            if (scanJob?.isActive == false) return@collect
             _state.value = ScanUiState.Scanning(p.scanned, p.found, p.currentPath)
         }
 
+        if (scanJob?.isActive == false) return
         if (candidates.isEmpty()) {
             _state.value = ScanUiState.Empty("Tidak ada file yang cocok dengan rule terpilih.")
             return
@@ -172,13 +200,13 @@ class ScanViewModel(
         val items = candidates.map {
             ScanItemEntity(
                 sessionId = 0,
-                templateId = it.templateId,
-                path = it.item.path,
-                name = it.item.name,
-                size = it.item.size,
-                mimeType = it.item.mimeType,
-                lastModified = it.item.lastModified,
-                isMedia = it.item.isMedia,
+                templateId = it.first,
+                path = it.second.path,
+                name = it.second.name,
+                size = it.second.size,
+                mimeType = it.second.mimeType,
+                lastModified = it.second.lastModified,
+                isMedia = it.second.isMedia,
                 status = "PENDING"
             )
         }

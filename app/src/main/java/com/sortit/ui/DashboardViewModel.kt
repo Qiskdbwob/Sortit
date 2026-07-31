@@ -17,7 +17,8 @@ class DashboardViewModel(
 ) : ViewModel() {
     val templates = templateRepo.observe().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val monitors = monitorRepo.observe().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val counts = logRepo.observeCounts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.sortit.repo.SortCounts())
+    val counts = logRepo.observeTodayCounts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.sortit.repo.SortCounts())
+    val totalCounts = logRepo.observeCounts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.sortit.repo.SortCounts())
     val recentLogs = logRepo.observeRecent(10).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val pendingScanCount = scanRepo.observeGlobalPendingCount().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
     val activeScan = scanRepo.observeActive().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)

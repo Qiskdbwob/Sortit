@@ -19,15 +19,26 @@ class TrashCleanupUseCase(
 
     var deletedCount = 0
     var freedBytes = 0L
-    trashDir.listFiles()?.forEach { file ->
-      if (file.lastModified() < cutoff) {
-        val size = file.length()
-        if (file.delete()) {
+
+    // File trash tersimpan di subfolder ekstensi: .sortit-trash/<ext>/file
+    trashDir.listFiles()?.forEach { child ->
+      if (child.isFile) {
+        if (child.lastModified() < cutoff && child.delete()) {
           deletedCount++
-          freedBytes += size
+          freedBytes += child.length()
         }
+      } else if (child.isDirectory) {
+        child.listFiles()?.forEach { f ->
+          if (f.isFile && f.lastModified() < cutoff && f.delete()) {
+            deletedCount++
+            freedBytes += f.length()
+          }
+        }
+        // Bersihkan folder ekstensi yang sudah kosong supaya tidak menumpuk.
+        if (child.listFiles()?.isEmpty() == true) child.delete()
       }
     }
+
     CleanupResult(deletedCount, freedBytes)
   }
 }

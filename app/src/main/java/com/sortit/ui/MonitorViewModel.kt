@@ -79,14 +79,26 @@ class MonitorViewModel(
 
     fun runAutoFor(monitor: MonitorEntity) = viewModelScope.launch {
         val auto = autoApply ?: return@launch
-        val r = auto.applyForMonitorPaths(monitor.path)
-        _autoMsg.value = "Auto: pindah ${r.moved} · trash ${r.trashed} · gagal ${r.failed}"
+        if (_operationBusy.value) return@launch
+        _operationBusy.value = true
+        try {
+            val r = auto.applyForMonitorPaths(monitor.path)
+            _autoMsg.value = "Auto: pindah ${r.moved} · trash ${r.trashed} · gagal ${r.failed}"
+        } finally {
+            _operationBusy.value = false
+        }
     }
 
     fun runAutoAll() = viewModelScope.launch {
         val auto = autoApply ?: return@launch
-        val r = auto.applyAllEnabled()
-        _autoMsg.value = "Auto semua: pindah ${r.moved} · trash ${r.trashed} · gagal ${r.failed}"
+        if (_operationBusy.value) return@launch
+        _operationBusy.value = true
+        try {
+            val r = auto.applyAllEnabled()
+            _autoMsg.value = "Auto semua: pindah ${r.moved} · trash ${r.trashed} · gagal ${r.failed}"
+        } finally {
+            _operationBusy.value = false
+        }
     }
 
     fun moveSelected(paths: Set<String>, destDir: String) =
@@ -155,6 +167,26 @@ class MonitorViewModel(
         debounceJob = viewModelScope.launch {
             delay(400)
             _refreshTick.value++
+            // Auto-apply realtime: ada file baru di folder monitor → proses rule auto
+            // yang menyentuh path ini. Aman: hanya file di path monitor (bukan seluruh storage).
+            val auto = autoApply
+            if (auto != null && !_operationBusy.value) {
+                _operationBusy.value = true
+                try {
+                    val paths = monitors.value.filter { it.enabled }
+                        .flatMap { splitMonitorPaths(it.path) }
+                        .distinct()
+                    if (paths.isNotEmpty()) {
+                        val r = auto.applyForMonitorPaths(paths.joinToString("\n"))
+                        if (r.moved > 0 || r.trashed > 0 || r.failed > 0) {
+                            _autoMsg.value = "Auto: pindah ${r.moved} · trash ${r.trashed} · gagal ${r.failed}"
+                        }
+                    }
+                } catch (_: Exception) {
+                } finally {
+                    _operationBusy.value = false
+                }
+            }
         }
     }
 

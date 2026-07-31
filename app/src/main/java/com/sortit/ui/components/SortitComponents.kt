@@ -394,7 +394,12 @@ data class TallyItem(val value: String, val label: String, val color: Color? = n
 
 /** Strip angka manifest (4 kolom, dipisah garis putus) - pengganti grid 2x2 kartu ikon lama. */
 @Composable
-fun ManifestTally(kicker: String, items: List<TallyItem>, modifier: Modifier = Modifier) {
+fun ManifestTally(
+    kicker: String,
+    items: List<TallyItem>,
+    modifier: Modifier = Modifier,
+    footnote: String? = null
+) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.small,
@@ -429,6 +434,15 @@ fun ManifestTally(kicker: String, items: List<TallyItem>, modifier: Modifier = M
                         DashedDivider(Modifier.fillMaxHeight().width(10.dp).padding(vertical = 2.dp))
                     }
                 }
+            }
+            if (footnote != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = footnote,
+                    modifier = Modifier.padding(horizontal = 14.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

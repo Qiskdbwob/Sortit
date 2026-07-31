@@ -11,6 +11,7 @@ interface FileOps {
   fun lastModified(path: String): Long
   fun mimeOf(file: File): String?
   fun move(src: String, dstDir: String): String?
+  /** @deprecated Gunakan move(src, TRASH_ROOT) langsung. Ditandai agar mudah ditemukan. */
   fun moveToTrash(src: String): String?
   fun mkdirs(dir: String): Boolean
   fun isReadableDir(path: String): Boolean
@@ -82,7 +83,8 @@ class RealFileOps : FileOps {
     if (!d.exists()) d.mkdirs()
 
     var target = File(d, s.name)
-    if (s.absolutePath == target.absolutePath) return target.absolutePath
+    // Source = destination: tidak perlu dipindah (EC-02: SKIP, bukan OK).
+    if (s.absolutePath == target.absolutePath) return null
 
     var i = 1
     while (target.exists()) {

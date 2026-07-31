@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sortit.SortitApplication
+import com.sortit.repo.SeedUseCase
 import com.sortit.repo.ExcludeRepository
 import com.sortit.ui.components.InfoBanner
 import com.sortit.ui.components.MonoText
@@ -66,6 +67,8 @@ fun SettingsDialog(
   var excludeInput by remember { mutableStateOf("") }
   var excludeError by remember { mutableStateOf<String?>(null) }
   var reloadTick by remember { mutableIntStateOf(0) }
+  var seedResetMsg by remember { mutableStateOf<String?>(null) }
+  var seedResetting by remember { mutableStateOf(false) }
 
   fun reloadExcludes() {
     scope.launch {
@@ -120,6 +123,14 @@ fun SettingsDialog(
     onDismiss = onDismiss,
     confirmButton = { TextButton(onClick = onDismiss) { Text("Tutup") } }
   ) {
+    if (seedResetMsg != null) {
+      InfoBanner(
+        text = seedResetMsg!!,
+        kind = StampKind.MOVE,
+        withIcon = false
+      )
+      TextButton(onClick = { seedResetMsg = null }) { Text("Tutup pesan") }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("Mode tampilan", fontWeight = FontWeight.SemiBold)
       Text(
@@ -133,9 +144,13 @@ fun SettingsDialog(
           "light" to "Siang",
           "dark" to "Malam"
         ).forEach { (value, label) ->
-          val selected = mode == value
-          if (selected) {
-            Button(onClick = { }) { Text(label) }
+          val isSelected = mode == value
+          if (isSelected) {
+            Button(
+              onClick = { /* sudah aktif */ },
+              enabled = true,
+              colors = androidx.compose.material3.ButtonDefaults.buttonColors()
+            ) { Text(label) }
           } else {
             OutlinedButton(onClick = {
               mode = value
@@ -235,6 +250,35 @@ fun SettingsDialog(
             }
           }
         }
+      }
+    }
+    androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Text("Reset data default", fontWeight = FontWeight.SemiBold)
+      Text(
+        "Kembalikan rule sampah, dokumen, dan monitor WA bawaan jika sudah terhapus.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+      )
+      OutlinedButton(
+        onClick = {
+          scope.launch {
+            seedResetting = true
+            try {
+              // Reset seedVersion supaya migrasi idempotent berjalan ulang.
+              app.prefs.seedVersion = 0
+              SeedUseCase(app.db).seedIfEmpty(app.prefs)
+              seedResetMsg = "Data default berhasil dikembalikan."
+            } catch (e: Exception) {
+              seedResetMsg = "Gagal reset: ${e.message}"
+            } finally {
+              seedResetting = false
+            }
+          }
+        },
+        enabled = !seedResetting
+      ) {
+        Text(if (seedResetting) "Memproses..." else "Reset default")
       }
     }
   }

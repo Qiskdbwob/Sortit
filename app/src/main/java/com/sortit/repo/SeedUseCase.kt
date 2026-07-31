@@ -13,7 +13,7 @@ import com.sortit.util.joinMonitorPaths
 class SeedUseCase(private val db: AppDatabase) {
 
     companion object {
-        const val CURRENT_SEED_VERSION = 3
+        const val CURRENT_SEED_VERSION = 4
 
         // Ekstensi sampah yang jarang penting bagi user (tanpa txt/bak).
         const val SAMPAH_EXTS =
@@ -46,7 +46,7 @@ class SeedUseCase(private val db: AppDatabase) {
             return
         }
         if (prefs.seedVersion < CURRENT_SEED_VERSION) {
-            migrateToV2()
+            migrateToV4()
             prefs.seedVersion = CURRENT_SEED_VERSION
         }
     }
@@ -114,6 +114,45 @@ class SeedUseCase(private val db: AppDatabase) {
     private suspend fun migrateToV2() {
         updateSampahTemplate()
         ensureWaMonitors()
+    }
+
+    /**
+     * Migrasi idempotent untuk versi lama yang terlanjur ter-seed sebagian:
+     * pastikan rule default & monitor default selalu ada, apapun kondisi DB.
+     */
+    private suspend fun migrateToV4() {
+        migrateToV2()
+        ensureDefaultTemplates()
+    }
+
+    private suspend fun ensureDefaultTemplates() {
+        val all = db.templateDao().getAllOnce()
+        val hasSampah = all.any { it.isDefault && it.name.equals("sampah", ignoreCase = true) }
+        val hasDokumen = all.any { it.isDefault && it.name.equals("dokumen", ignoreCase = true) }
+        if (!hasSampah) {
+            db.templateDao().insert(
+                TemplateEntity(
+                    name = "sampah",
+                    extensions = SAMPAH_EXTS,
+                    targetTreeUri = "/storage/emulated/0/Sortit/sampah",
+                    sourceMode = "ALL",
+                    sourceDirs = null,
+                    isDefault = true
+                )
+            )
+        }
+        if (!hasDokumen) {
+            db.templateDao().insert(
+                TemplateEntity(
+                    name = "dokumen",
+                    extensions = "pdf,doc,docx,xls,xlsx,ppt,pptx",
+                    targetTreeUri = "/storage/emulated/0/Sortit/dokumen",
+                    sourceMode = "ALL",
+                    sourceDirs = null,
+                    isDefault = true
+                )
+            )
+        }
     }
 
     private suspend fun updateSampahTemplate() {

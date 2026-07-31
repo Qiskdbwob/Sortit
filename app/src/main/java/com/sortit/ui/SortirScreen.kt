@@ -1,7 +1,9 @@
 package com.sortit.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,18 +24,25 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -133,6 +142,8 @@ private fun DoneDialog(state: ScanUiState.Done, onDone: () -> Unit) {
   }
 }
 
+private enum class SortKey { NAME, SIZE, DATE }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel) {
@@ -140,6 +151,31 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
   val excluded = state.items.count { it.status == "EXCLUDED" }
   val media = state.items.count { it.isMedia }
   val ruleCount = state.items.map { it.templateId }.distinct().size
+
+  var query by remember { mutableStateOf("") }
+  var ruleFilter by remember { mutableStateOf<Long?>(null) }
+  var sortKey by remember { mutableStateOf(SortKey.DATE) }
+  var descending by remember { mutableStateOf(true) }
+  var showConfirm by remember { mutableStateOf(false) }
+  var confirmAction by remember { mutableStateOf(SortFilesUseCase.Action.MOVE) }
+  var extFilter by remember { mutableStateOf<String?>(null) }
+
+  val filtered = remember(state.items, query, ruleFilter, sortKey, descending, extFilter) {
+    val q = query.trim()
+    state.items
+      .filter { q.isBlank() || it.name.contains(q, true) || it.path.contains(q, true) }
+      .filter { ruleFilter == null || it.templateId == ruleFilter }
+      .filter { extFilter == null || extOfName(it.name) == extFilter }
+      .sortedWith(
+        when (sortKey) {
+          SortKey.NAME -> compareBy { it.name.lowercase() }
+          SortKey.SIZE -> compareBy { it.size }
+          SortKey.DATE -> compareBy { it.lastModified }
+        }
+      )
+      .let { if (descending) it.reversed() else it }
+  }
+  val filteredPending = filtered.count { it.status == "PENDING" }
 
   Scaffold(
     topBar = {
@@ -163,7 +199,10 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
             MonoText("$excluded dikecualikan \u00b7 $media media", style = MaterialTheme.typography.bodySmall)
           }
           OutlinedButton(
-            onClick = { scanVm.executePending(SortFilesUseCase.Action.TRASH) },
+            onClick = {
+              confirmAction = SortFilesUseCase.Action.TRASH
+              showConfirm = true
+            },
             enabled = pending > 0
           ) {
             Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
@@ -172,7 +211,10 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
           }
           Spacer(Modifier.size(8.dp))
           Button(
-            onClick = { scanVm.executePending(SortFilesUseCase.Action.MOVE) },
+            onClick = {
+              confirmAction = SortFilesUseCase.Action.MOVE
+              showConfirm = true
+            },
             enabled = pending > 0
           ) { Text("Pindah") }
         }
@@ -187,23 +229,74 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
       if (state.items.size > 200) {
         item {
           InfoBanner(
-            text = "Hasil besar: ${state.items.size} file. Pertimbangkan persempit rule agar review lebih ringan.",
+            text = "Hasil besar: ${state.items.size} file. Gunakan pencarian/filter untuk mempersempit review.",
             kind = StampKind.WARN
           )
         }
       }
       item {
-        SectionCard(title = "Pilih file yang dikecualikan", subtitle = "Default semua file ikut ditindak. Centang hanya untuk mengecualikan.") {
-          Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TextButton(onClick = { scanVm.setAllExcluded(true) }) { Text("Kecualikan semua") }
-            TextButton(onClick = { scanVm.setAllExcluded(false) }) { Text("Sertakan semua") }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = { Icon(Icons.Default.Search, null) },
+            label = { Text("Cari nama / path") },
+            singleLine = true
+          )
+          Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            FilterDropdown(
+              label = if (ruleFilter == null) "Semua rule" else (state.templates[ruleFilter]?.name ?: "Rule"),
+              options = state.templates.values.sortedBy { it.name }.map { it.id to it.name },
+              selected = ruleFilter,
+              onSelect = { ruleFilter = it }
+            )
+            FilterDropdown(
+              label = "Sort: ${if (sortKey == SortKey.NAME) "nama" else if (sortKey == SortKey.SIZE) "ukuran" else "tanggal"} ${if (descending) "↓" else "↑"}",
+              options = listOf(
+                SortKey.NAME to "Nama",
+                SortKey.SIZE to "Ukuran",
+                SortKey.DATE to "Tanggal"
+              ),
+              selected = sortKey,
+              onSelect = { sortKey = it }
+            )
+            TextButton(onClick = { descending = !descending }) { Text(if (descending) "Turun" else "Naik") }
+          }
+          Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            val exts = remember(state.items) {
+              state.items.map { extOfName(it.name) }.filter { it.isNotBlank() }.distinct().sorted().take(8)
+            }
+            if (exts.isNotEmpty()) {
+              FilterChipRow(
+                selected = extFilter,
+                options = exts,
+                onSelect = { extFilter = it }
+              )
+            }
+          }
+          SectionCard(title = "Tindakan batch", subtitle = "Berlaku untuk ${filtered.size} file hasil filter.") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              TextButton(onClick = {
+                scanVm.setExcludedForPaths(filtered.map { it.path }.toSet(), true)
+              }, enabled = filteredPending > 0) {
+                Text("Kecualikan semua terfilter")
+              }
+              TextButton(onClick = {
+                scanVm.setExcludedForPaths(filtered.map { it.path }.toSet(), false)
+              }) {
+                Text("Sertakan semua terfilter")
+              }
+            }
           }
         }
       }
       if (state.items.isEmpty()) {
         item { EmptyState(icon = Icons.Default.Search, title = "Tidak ada file", message = "Sesi ini tidak punya item.") }
+      } else if (filtered.isEmpty()) {
+        item { EmptyState(icon = Icons.Default.Search, title = "Tidak ada hasil filter", message = "Coba ubah kata kunci / filter.") }
       } else {
-        items(state.items, key = { it.id }) { item ->
+        items(filtered, key = { it.id }) { item ->
           ScanItemRow(
             item = item,
             templateName = state.templates[item.templateId]?.name ?: "Rule #${item.templateId}",
@@ -213,6 +306,79 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
       }
     }
   }
+
+  if (showConfirm) {
+    val action = confirmAction
+    val verb = if (action == SortFilesUseCase.Action.MOVE) "dipindahkan" else "dipindah ke trash"
+    SortitDialog(
+      title = "Konfirmasi $verb",
+      onDismiss = { showConfirm = false },
+      confirmButton = {
+        Button(onClick = {
+          showConfirm = false
+          scanVm.executePending(action)
+        }) { Text("Ya, $verb") }
+      },
+      dismissButton = { TextButton(onClick = { showConfirm = false }) { Text("Batal") } }
+    ) {
+      val target = if (action == SortFilesUseCase.Action.TRASH) "trash (.sortit-trash)" else "folder tujuan rule masing-masing"
+      Text("$pending file akan $verb ke $target.")
+      Text("File yang dikecualikan tidak disentuh. Aksi ini tidak bisa dibatalkan (kecuali lewat Undo di Riwayat).")
+    }
+  }
+}
+
+@Composable
+private fun <T> FilterDropdown(
+  label: String,
+  options: List<Pair<T, String>>,
+  selected: T?,
+  onSelect: (T) -> Unit
+) {
+  var expanded by remember { mutableStateOf(false) }
+  OutlinedButton(onClick = { expanded = true }) {
+    Text(label, maxLines = 1)
+  }
+  DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+    options.forEach { (value, text) ->
+      DropdownMenuItem(
+        text = { Text(text, maxLines = 1) },
+        onClick = {
+          onSelect(value)
+          expanded = false
+        }
+      )
+    }
+  }
+}
+
+@Composable
+private fun FilterChipRow(
+  selected: String?,
+  options: List<String>,
+  onSelect: (String?) -> Unit
+) {
+  androidx.compose.foundation.horizontalScroll(rememberScrollState()) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+      androidx.compose.material3.FilterChip(
+        selected = selected == null,
+        onClick = { onSelect(null) },
+        label = { Text("Semua ext") }
+      )
+      options.forEach { e ->
+        androidx.compose.material3.FilterChip(
+          selected = selected == e,
+          onClick = { onSelect(if (selected == e) null else e) },
+          label = { Text(e) }
+        )
+      }
+    }
+  }
+}
+
+private fun extOfName(name: String): String {
+  val dot = name.lastIndexOf('.')
+  return if (dot > 0 && dot < name.length - 1) name.substring(dot + 1).lowercase() else "other"
 }
 
 @Composable

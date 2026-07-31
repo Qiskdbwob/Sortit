@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -43,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sortit.ui.components.EmptyState
+import com.sortit.ui.components.MediaThumb
 import com.sortit.ui.components.InfoBanner
 import com.sortit.ui.components.Kicker
 import com.sortit.ui.components.MonoText
@@ -190,6 +192,13 @@ fun HistoryScreen(vm: HistoryViewModel, modifier: Modifier = Modifier) {
                   selected = if (on) selected + item.path else selected - item.path
                 }
               )
+              val isMedia = item.ext.lowercase().let { e ->
+                e == "jpg" || e == "jpeg" || e == "png" || e == "webp" || e == "gif" ||
+                e == "mp4" || e == "mkv" || e == "webm" || e == "heic" || e == "avif"
+              }
+              val mimeGuess = if (item.ext.lowercase().let { it == "mp4" || it == "mkv" || it == "webm" }) "video/mp4" else if (isMedia) "image/jpeg" else null
+              MediaThumb(item.name, item.path, mimeGuess, isMedia, Modifier.size(44.dp))
+              Spacer(Modifier.size(10.dp))
               Column(Modifier.weight(1f)) {
                 Text(truncateFileName(item.name), fontWeight = FontWeight.SemiBold, maxLines = 1)
                 MonoText("${item.ext} · ${formatSize(item.size)}" + if (!item.exists) " · hilang" else "")

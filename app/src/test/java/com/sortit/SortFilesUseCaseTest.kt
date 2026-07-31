@@ -30,6 +30,17 @@ class FakeLogDao : SortLogDao {
     override fun observeTrashedCount(): Flow<Int> = flowOf(rows.count { it.status == "OK" && it.dstPath.contains("/.sortit-trash/") })
     override fun observeFailedCount(): Flow<Int> = flowOf(rows.count { it.status == "FAIL" })
     override suspend fun deleteOlderThan(cutoff: Long) { }
+    override suspend fun update(l: com.sortit.data.SortLogEntity) {
+        val idx = rows.indexOfFirst { it.id == l.id }
+        if (idx >= 0) rows[idx] = l else rows.add(l)
+    }
+    override suspend fun listAll(limit: Int): List<com.sortit.data.SortLogEntity> = rows.toList()
+    override fun observeMovedCountSince(since: Long): kotlinx.coroutines.flow.Flow<Int> =
+        kotlinx.coroutines.flow.flowOf(rows.count { it.status == "OK" && !it.dstPath.contains("/.sortit-trash/") && it.timestamp >= since })
+    override fun observeTrashedCountSince(since: Long): kotlinx.coroutines.flow.Flow<Int> =
+        kotlinx.coroutines.flow.flowOf(rows.count { it.status == "OK" && it.dstPath.contains("/.sortit-trash/") && it.timestamp >= since })
+    override fun observeFailedCountSince(since: Long): kotlinx.coroutines.flow.Flow<Int> =
+        kotlinx.coroutines.flow.flowOf(rows.count { it.status == "FAIL" && it.timestamp >= since })
 }
 
 private fun ops(moveResult: (String, String) -> String?): FileOps = object : FileOps {

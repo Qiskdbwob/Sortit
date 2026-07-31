@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.sortit.data.SortLogEntity
 import com.sortit.repo.FileOps
 import com.sortit.repo.SortLogRepository
+import com.sortit.util.extensionFolder
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,14 +52,14 @@ class HistoryViewModel(
                 path = f.absolutePath,
                 name = f.name,
                 size = f.length(),
-                ext = extOf(f.name),
+                ext = extensionFolder(f.name),
                 exists = true
             )
         }
         // include log-only missing?
         val diskPaths = fromDisk.map { it.path }.toSet()
         val orphans = logs.filter { it.dstPath !in diskPaths }.map {
-            HistoryFile(it, it.dstPath, it.fileName, it.size, extOf(it.fileName), fileOps.exists(it.dstPath))
+            HistoryFile(it, it.dstPath, it.fileName, it.size, extensionFolder(it.fileName), fileOps.exists(it.dstPath))
         }
         return (fromDisk + orphans).sortedByDescending { it.log?.timestamp ?: 0L }
     }
@@ -70,7 +71,7 @@ class HistoryViewModel(
                 path = it.dstPath,
                 name = it.fileName,
                 size = it.size,
-                ext = extOf(it.fileName),
+                ext = extensionFolder(it.fileName),
                 exists = fileOps.exists(it.dstPath)
             )
         }
@@ -79,36 +80,52 @@ class HistoryViewModel(
     fun undoToSource(items: List<HistoryFile>) = viewModelScope.launch {
         var ok = 0
         var fail = 0
+        val failures = mutableListOf<String>()
         items.forEach { h ->
             val log = h.log
-            val srcDir = log?.srcPath?.let { File(it).parent } ?: return@forEach
-            if (!h.exists) { fail++; return@forEach }
+            // Fallback: log-only (log ada, file sudah dibersihkan worker) tetap bisa restore
+            // pakai srcPath dari log. File yang sama sekali tidak punya log tidak bisa.
+            val srcDir = log?.srcPath?.let { File(it).parent }
+            if (srcDir == null) { fail++; failures.add(h.name + " (tanpa asal)"); return@forEach }
+            if (!h.exists) { fail++; failures.add(h.name + " (hilang)"); return@forEach }
             val dst = fileOps.restore(h.path, srcDir)
             if (dst != null) {
                 ok++
-                log?.let { logRepo.delete(it) }
-            } else fail++
+                if (log != null) {
+                    // File kembali ke asal — log tidak relevan lagi.
+                    logRepo.delete(log)
+                }
+            } else {
+                fail++
+                failures.add(h.name)
+            }
         }
-        _msg.value = "Undo: $ok sukses · $fail gagal"
+        _msg.value = if (failures.isEmpty()) "Undo: $ok sukses"
+            else "Undo: $ok sukses · $fail gagal (${failures.take(3).joinToString(", ")})"
         refresh()
     }
 
     fun moveTo(items: List<HistoryFile>, destDir: String) = viewModelScope.launch {
         var ok = 0
         var fail = 0
+        val failures = mutableListOf<String>()
         fileOps.mkdirs(destDir)
         items.forEach { h ->
-            if (!h.exists) { fail++; return@forEach }
+            if (!h.exists) { fail++; failures.add(h.name + " (hilang)"); return@forEach }
             val sub = "$destDir/${h.ext}"
             fileOps.mkdirs(sub)
             val dst = fileOps.move(h.path, sub)
             if (dst != null) {
                 ok++
-                // keep log but update? simpler: delete old log entry
-                h.log?.let { logRepo.delete(it) }
-            } else fail++
+                // Perbarui log ke path baru agar Riwayat tetap sinkron (bukan dihapus).
+                h.log?.let { logRepo.update(it.copy(dstPath = dst, templateId = 0L)) }
+            } else {
+                fail++
+                failures.add(h.name)
+            }
         }
-        _msg.value = "Pindah: $ok sukses · $fail gagal"
+        _msg.value = if (failures.isEmpty()) "Pindah: $ok sukses"
+            else "Pindah: $ok sukses · $fail gagal (${failures.take(3).joinToString(", ")})"
         refresh()
     }
 
@@ -124,8 +141,4 @@ class HistoryViewModel(
         refresh()
     }
 
-    private fun extOf(name: String): String {
-        val dot = name.lastIndexOf('.')
-        return if (dot > 0 && dot < name.length - 1) name.substring(dot + 1).lowercase() else "other"
-    }
 }

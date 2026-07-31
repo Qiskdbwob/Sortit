@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Lock
@@ -166,25 +169,25 @@ private fun MainTabs(
         NavigationBarItem(
           selected = tab == 0,
           onClick = { tab = 0 },
-          icon = { Icon(Icons.Default.Folder, contentDescription = null) },
+          icon = { Icon(Icons.Default.Home, contentDescription = "Beranda") },
           label = { Text("Beranda") }
         )
         NavigationBarItem(
           selected = tab == 1,
           onClick = { tab = 1 },
-          icon = { Icon(Icons.Default.Add, contentDescription = null) },
+          icon = { Icon(Icons.Default.List, contentDescription = "Rules") },
           label = { Text("Rules") }
         )
         NavigationBarItem(
           selected = tab == 2,
           onClick = { tab = 2 },
-          icon = { Icon(Icons.Default.Folder, contentDescription = null) },
+          icon = { Icon(Icons.Default.Folder, contentDescription = "Monitor") },
           label = { Text("Monitor") }
         )
         NavigationBarItem(
           selected = tab == 3,
           onClick = { tab = 3 },
-          icon = { Icon(Icons.Default.Delete, contentDescription = null) },
+          icon = { Icon(Icons.Default.History, contentDescription = "Riwayat") },
           label = { Text("Riwayat") }
         )
       }

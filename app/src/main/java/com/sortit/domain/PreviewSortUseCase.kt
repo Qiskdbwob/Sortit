@@ -12,9 +12,7 @@ class PreviewSortUseCase(private val fileOps: FileOps) {
         val item: FileItem
     )
 
-    fun collect(template: TemplateEntity, excludePatterns: Set<String>): List<FileItem> =
-        collectMany(listOf(template), excludePatterns).map { it.item }
-
+    /** Hasilkan kandidat scan untuk referensi eksternal (tidak dipakai VM secara langsung). */
     fun collectMany(
         templates: List<TemplateEntity>,
         excludePatterns: Set<String>

@@ -47,7 +47,6 @@ import com.sortit.ui.components.formatDate
 import com.sortit.util.LinkUtils
 import com.sortit.util.splitMonitorPaths
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -61,6 +60,7 @@ fun DashboardScreen(
   val templates by vm.templates.collectAsState()
   val monitors by vm.monitors.collectAsState()
   val counts by vm.counts.collectAsState()
+  val totalCounts by vm.totalCounts.collectAsState()
   val pending by vm.pendingScanCount.collectAsState()
   val active by vm.activeScan.collectAsState()
   val recent by vm.recentLogs.collectAsState()
@@ -86,7 +86,8 @@ fun DashboardScreen(
           TallyItem(counts.trashed.toString(), "Trash", LocalSortitColors.current.trash),
           TallyItem(pending.toString(), "Pending", null),
           TallyItem(counts.failed.toString(), "Gagal", LocalSortitColors.current.warn)
-        )
+        ),
+        footnote = "Hari ini · total ${totalCounts.moved + totalCounts.trashed} diproses"
       )
     }
     if (active != null && pending > 0) {
@@ -141,11 +142,9 @@ fun DashboardScreen(
 private fun MonitorStatusLine(m: MonitorEntity) {
   val scan = remember { ScanPathUseCase(RealFileOps()) }
   val inspection by produceState<ScanPathUseCase.PathInspection?>(initialValue = null, m.path, m.enabled) {
-    while (true) {
-      value = withContext(Dispatchers.IO) { if (m.enabled) scan.inspect(m.path) else null }
-      if (!m.enabled) break
-      delay(30_000)
-    }
+    // Satu kali per perubahan key (path/enabled) — tidak polling terus-menerus.
+    // Refresh terjadi saat user navigasi balik ke Beranda (recompose).
+    value = withContext(Dispatchers.IO) { if (m.enabled) scan.inspect(m.path) else null }
   }
   val paths = remember(m.path) { splitMonitorPaths(m.path) }
   val pathLabel = if (paths.size <= 1) (paths.firstOrNull() ?: m.path) else "${paths.size} folder · ${paths.first()}"

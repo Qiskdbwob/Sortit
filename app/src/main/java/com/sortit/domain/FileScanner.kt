@@ -17,11 +17,15 @@ object FileScanner {
     fun resolveRoots(template: TemplateEntity): List<String> =
         when (template.sourceMode) {
             "ALL" -> listOf("/storage/emulated/0")
-            else -> (template.sourceDirs ?: "")
-                .split(',')
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
+            else -> splitSourceDirs(template.sourceDirs ?: "")
         }
+
+    /** Pisahkan sourceDirs — support newline (baru) dan koma (lama/migrasi). */
+    fun splitSourceDirs(raw: String): List<String> =
+        raw.split('
+', '|', ',')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
 
     fun isExcluded(path: String, name: String, patterns: Set<String>): Boolean {
         if (patterns.isEmpty()) return false

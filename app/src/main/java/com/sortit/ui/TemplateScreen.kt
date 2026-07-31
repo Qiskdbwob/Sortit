@@ -216,7 +216,7 @@ private fun RuleCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
-          val srcList = (t.sourceDirs ?: "").split(",").map { it.trim() }.filter { it.isNotBlank() }
+          val srcList = com.sortit.domain.FileScanner.splitSourceDirs(t.sourceDirs ?: "")
           srcList.take(3).forEach { OneLinePath(it) }
           if (srcList.size > 3) {
             Text(
@@ -284,7 +284,9 @@ private fun RuleEditorDialog(
   var target by remember { mutableStateOf(initial?.targetTreeUri ?: "/storage/emulated/0/Sortit/") }
   var mode by remember { mutableStateOf(initial?.sourceMode ?: "ALL") }
   var dirList by remember {
-    mutableStateOf(initial?.sourceDirs?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList())
+    mutableStateOf(initial?.sourceDirs?.let {
+        com.sortit.domain.FileScanner.splitSourceDirs(it)
+    } ?: emptyList())
   }
   var dirInput by remember { mutableStateOf("") }
   var dirError by remember { mutableStateOf<String?>(null) }
@@ -401,7 +403,7 @@ private fun RuleEditorDialog(
           val age = ageDays.trim().toIntOrNull() ?: 0
           onSave(
             name.trim(), ext.trim(), target.trim(), mode,
-            dirList.joinToString(",").ifBlank { null },
+            dirList.joinToString("\n").ifBlank { null },
             minB, maxB, age, autoEnabled, autoAction, excludes
           )
         }
