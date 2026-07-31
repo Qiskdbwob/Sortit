@@ -68,7 +68,8 @@ class MainActivity : ComponentActivity() {
                 MonitorViewModel(
                     monitorRepo, autoApply,
                     (application as SortitApplication).fileOps,
-                    (application as SortitApplication).db.sortLogDao()
+                    (application as SortitApplication).db.sortLogDao(),
+                    templateRepo
                 ) as T
         })[MonitorViewModel::class.java]
     }

@@ -10,6 +10,7 @@ import com.sortit.domain.FileItem
 import com.sortit.domain.SortFilesUseCase
 import com.sortit.repo.FileOps
 import com.sortit.repo.MonitorRepository
+import com.sortit.repo.TemplateRepository
 import com.sortit.repo.RealFileOps
 import com.sortit.util.splitMonitorPaths
 import java.io.File
@@ -25,7 +26,8 @@ class MonitorViewModel(
     private val repo: MonitorRepository,
     private val autoApply: AutoApplyUseCase? = null,
     private val fileOps: FileOps = RealFileOps(),
-    private val logDao: SortLogDao? = null
+    private val logDao: SortLogDao? = null,
+    private val templateRepo: TemplateRepository? = null
 ) : ViewModel() {
     val monitors = repo.observe().stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
@@ -54,10 +56,15 @@ class MonitorViewModel(
     init {
         viewModelScope.launch {
             monitors.collect { list ->
-                val paths = list.filter { it.enabled }
+                // Kumpulkan: monitor paths + source dirs rule auto-enabled
+                val monitorPaths = list.filter { it.enabled }
                     .flatMap { splitMonitorPaths(it.path) }
-                    .distinct()
-                restartObservers(paths)
+                val rulePaths = templateRepo?.getAllOnce()
+                    ?.filter { it.enabled && it.autoEnabled && it.sourceMode == "FOLDERS" }
+                    ?.flatMap { com.sortit.domain.FileScanner.splitSourceDirs(it.sourceDirs ?: "") }
+                    ?: emptyList()
+                val allPaths = (monitorPaths + rulePaths).distinct()
+                restartObservers(allPaths)
             }
         }
     }
@@ -173,14 +180,11 @@ class MonitorViewModel(
             if (auto != null && !_operationBusy.value) {
                 _operationBusy.value = true
                 try {
-                    val paths = monitors.value.filter { it.enabled }
-                        .flatMap { splitMonitorPaths(it.path) }
-                        .distinct()
-                    if (paths.isNotEmpty()) {
-                        val r = auto.applyForMonitorPaths(paths.joinToString("\n"))
-                        if (r.moved > 0 || r.trashed > 0 || r.failed > 0) {
-                            _autoMsg.value = "Auto: pindah ${r.moved} · trash ${r.trashed} · gagal ${r.failed}"
-                        }
+                    // applyAllEnabled() proses semua rule autoEnabled langsung —
+                    // tidak bergantung interseksi monitor path vs rule source dirs.
+                    val r = auto.applyAllEnabled()
+                    if (r.moved > 0 || r.trashed > 0 || r.failed > 0) {
+                        _autoMsg.value = "Auto: pindah ${r.moved} · trash ${r.trashed} · gagal ${r.failed}"
                     }
                 } catch (_: Exception) {
                 } finally {
