@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sortit.SortitApplication
+import com.sortit.repo.SeedDbAdapter
 import com.sortit.repo.SeedUseCase
 import com.sortit.repo.ExcludeRepository
 import com.sortit.ui.components.InfoBanner
@@ -267,7 +268,7 @@ fun SettingsDialog(
             try {
               // Reset seedVersion supaya migrasi idempotent berjalan ulang.
               app.prefs.seedVersion = 0
-              SeedUseCase(app.db).seedIfEmpty(app.prefs)
+              SeedUseCase(SeedDbAdapter(app.db), app.prefs).seedIfEmpty()
               seedResetMsg = "Data default berhasil dikembalikan."
             } catch (e: Exception) {
               seedResetMsg = "Gagal reset: ${e.message}"

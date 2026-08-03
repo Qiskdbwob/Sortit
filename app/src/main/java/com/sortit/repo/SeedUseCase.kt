@@ -1,16 +1,17 @@
 package com.sortit.repo
 
-import com.sortit.data.AppDatabase
 import com.sortit.data.MonitorEntity
 import com.sortit.data.TemplateEntity
-import com.sortit.util.Prefs
 import com.sortit.util.joinMonitorPaths
 
 /**
  * Seed default + migrasi ringan.
  * seedVersion 3: sampah tanpa txt/bak/nomedia; monitor WA multi-folder.
+ *
+ * Terima [SeedDb]/[SeedPrefs] (bukan AppDatabase/Prefs langsung) supaya
+ * migrasi bisa di-unit-test di JVM tanpa Android framework.
  */
-class SeedUseCase(private val db: AppDatabase) {
+class SeedUseCase(private val db: SeedDb, private val prefs: SeedPrefs) {
 
     companion object {
         const val CURRENT_SEED_VERSION = 5
@@ -38,22 +39,22 @@ class SeedUseCase(private val db: AppDatabase) {
             "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/.Statuses/"
     }
 
-    suspend fun seedIfEmpty(prefs: Prefs) {
-        if (!prefs.seeded) {
+    suspend fun seedIfEmpty() {
+        if (!this.prefs.seeded) {
             insertInitialDefaults()
-            prefs.seeded = true
-            prefs.seedVersion = CURRENT_SEED_VERSION
+            this.prefs.seeded = true
+            this.prefs.seedVersion = CURRENT_SEED_VERSION
             return
         }
-        if (prefs.seedVersion < CURRENT_SEED_VERSION) {
+        if (this.prefs.seedVersion < CURRENT_SEED_VERSION) {
             migrateToV5()
-            prefs.seedVersion = CURRENT_SEED_VERSION
+            this.prefs.seedVersion = CURRENT_SEED_VERSION
         }
     }
 
     private suspend fun insertInitialDefaults() {
-        if (db.templateDao().countDefaults() == 0) {
-            db.templateDao().insert(
+        if (db.countDefaultTemplates() == 0) {
+            db.insertTemplate(
                 TemplateEntity(
                     name = "sampah",
                     extensions = SAMPAH_EXTS,
@@ -63,7 +64,7 @@ class SeedUseCase(private val db: AppDatabase) {
                     isDefault = true
                 )
             )
-            db.templateDao().insert(
+            db.insertTemplate(
                 TemplateEntity(
                     name = "dokumen",
                     extensions = "pdf,doc,docx,xls,xlsx,ppt,pptx",
@@ -74,34 +75,34 @@ class SeedUseCase(private val db: AppDatabase) {
                 )
             )
         }
-        if (db.monitorDao().countDefaults() == 0) {
+        if (db.countDefaultMonitors() == 0) {
             insertDefaultMonitors()
         }
     }
 
     private suspend fun insertDefaultMonitors() {
-        db.monitorDao().insert(
+        db.insertMonitor(
             MonitorEntity(
                 name = "WA Statuses",
                 path = WA_STATUSES,
                 isDefault = true
             )
         )
-        db.monitorDao().insert(
+        db.insertMonitor(
             MonitorEntity(
                 name = "dokument WA",
                 path = joinMonitorPaths(WA_DOCS),
                 isDefault = true
             )
         )
-        db.monitorDao().insert(
+        db.insertMonitor(
             MonitorEntity(
                 name = "foto Wa",
                 path = joinMonitorPaths(WA_IMAGES),
                 isDefault = true
             )
         )
-        db.monitorDao().insert(
+        db.insertMonitor(
             MonitorEntity(
                 name = "Video Wa",
                 path = joinMonitorPaths(WA_VIDEO),
@@ -132,11 +133,11 @@ class SeedUseCase(private val db: AppDatabase) {
     }
 
     private suspend fun ensureDefaultTemplates() {
-        val all = db.templateDao().getAllOnce()
+        val all = db.getAllTemplates()
         val hasSampah = all.any { it.isDefault && it.name.equals("sampah", ignoreCase = true) }
         val hasDokumen = all.any { it.isDefault && it.name.equals("dokumen", ignoreCase = true) }
         if (!hasSampah) {
-            db.templateDao().insert(
+            db.insertTemplate(
                 TemplateEntity(
                     name = "sampah",
                     extensions = SAMPAH_EXTS,
@@ -148,7 +149,7 @@ class SeedUseCase(private val db: AppDatabase) {
             )
         }
         if (!hasDokumen) {
-            db.templateDao().insert(
+            db.insertTemplate(
                 TemplateEntity(
                     name = "dokumen",
                     extensions = "pdf,doc,docx,xls,xlsx,ppt,pptx",
@@ -162,31 +163,31 @@ class SeedUseCase(private val db: AppDatabase) {
     }
 
     private suspend fun updateSampahTemplate() {
-        val all = db.templateDao().getAllOnce()
+        val all = db.getAllTemplates()
         val sampah = all.firstOrNull { it.isDefault && it.name.equals("sampah", ignoreCase = true) }
         if (sampah != null) {
             val old = sampah.extensions.lowercase()
             if (old.contains("txt") || old.contains("bak") || old.contains("nomedia") || old == "tmp,cache,webp") {
-                db.templateDao().update(sampah.copy(extensions = SAMPAH_EXTS))
+                db.updateTemplate(sampah.copy(extensions = SAMPAH_EXTS))
             }
         }
     }
 
     private suspend fun ensureWaMonitors() {
-        val all = db.monitorDao().getAllOnce()
+        val all = db.getAllMonitors()
         val names = all.map { it.name.lowercase() }.toSet()
         if ("dokument wa" !in names) {
-            db.monitorDao().insert(
+            db.insertMonitor(
                 MonitorEntity(name = "dokument WA", path = joinMonitorPaths(WA_DOCS), isDefault = true)
             )
         }
         if ("foto wa" !in names) {
-            db.monitorDao().insert(
+            db.insertMonitor(
                 MonitorEntity(name = "foto Wa", path = joinMonitorPaths(WA_IMAGES), isDefault = true)
             )
         }
         if ("video wa" !in names) {
-            db.monitorDao().insert(
+            db.insertMonitor(
                 MonitorEntity(name = "Video Wa", path = joinMonitorPaths(WA_VIDEO), isDefault = true)
             )
         }
@@ -195,9 +196,9 @@ class SeedUseCase(private val db: AppDatabase) {
 
     /** Idempotent: pastikan monitor "WA Statuses" ada (path .Statuses). */
     private suspend fun ensureWaStatusesMonitor() {
-        val all = db.monitorDao().getAllOnce()
+        val all = db.getAllMonitors()
         if (all.none { it.name.equals("wa statuses", ignoreCase = true) }) {
-            db.monitorDao().insert(
+            db.insertMonitor(
                 MonitorEntity(name = "WA Statuses", path = WA_STATUSES, isDefault = true)
             )
         }

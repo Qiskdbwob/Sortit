@@ -14,6 +14,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.sortit.data.AppDatabase
 import com.sortit.repo.RealFileOps
+import com.sortit.repo.SeedDbAdapter
 import com.sortit.repo.SeedUseCase
 import com.sortit.util.AutoApplyWorker
 import com.sortit.util.NotifHelper
@@ -123,7 +124,7 @@ class SortitApplication : Application(), ImageLoaderFactory {
     prefs = Prefs(this)
     CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
       try {
-        SeedUseCase(db).seedIfEmpty(prefs)
+        SeedUseCase(SeedDbAdapter(db), prefs).seedIfEmpty()
       } catch (t: Throwable) {
         // Jangan sampai kegagalan seed menggagalkan startup app.
         // Sesi berikutnya akan mencoba lagi (seedVersion belum naik).

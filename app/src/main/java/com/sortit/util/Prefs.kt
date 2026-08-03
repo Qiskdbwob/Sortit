@@ -5,14 +5,13 @@ import androidx.core.content.edit
 
 class Prefs(private val ctx: Context) {
   private val sp = ctx.getSharedPreferences("sortit_prefs", Context.MODE_PRIVATE)
-  open var seeded: Boolean
+  var seeded: Boolean
     get() = sp.getBoolean("seeded", false)
     set(v) = sp.edit { putBoolean("seeded", v) }
   /** Naikkan saat default seed berubah (rule/monitor baru). */
-  open var seedVersion: Int
+  var seedVersion: Int
     get() = sp.getInt("seed_version", 0)
     set(v) = sp.edit { putInt("seed_version", v) }
-  // open: agar dapat di-override di unit test (tanpa SharedPreferences Android).
   var allFilesGranted: Boolean
     get() = sp.getBoolean("all_files_granted", false)
     set(v) = sp.edit { putBoolean("all_files_granted", v) }

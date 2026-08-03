@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.sortit.SortitApplication
+import com.sortit.repo.SeedDbAdapter
 import com.sortit.repo.SeedUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +24,7 @@ class BootReceiver : BroadcastReceiver() {
         val app = context.applicationContext as? SortitApplication ?: return
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                SeedUseCase(app.db).seedIfEmpty(app.prefs)
+                SeedUseCase(SeedDbAdapter(app.db), app.prefs).seedIfEmpty()
             } catch (_: Throwable) {
             }
         }
