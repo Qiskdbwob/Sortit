@@ -5,11 +5,11 @@ import androidx.core.content.edit
 
 class Prefs(private val ctx: Context) : com.sortit.repo.SeedPrefs {
   private val sp = ctx.getSharedPreferences("sortit_prefs", Context.MODE_PRIVATE)
-  var seeded: Boolean
+  override var seeded: Boolean
     get() = sp.getBoolean("seeded", false)
     set(v) = sp.edit { putBoolean("seeded", v) }
   /** Naikkan saat default seed berubah (rule/monitor baru). */
-  var seedVersion: Int
+  override var seedVersion: Int
     get() = sp.getInt("seed_version", 0)
     set(v) = sp.edit { putInt("seed_version", v) }
   var allFilesGranted: Boolean
