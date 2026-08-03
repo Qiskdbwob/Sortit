@@ -43,7 +43,10 @@ class SeedUseCaseTest {
         }
     }
 
-    private class FakeSeedPrefs(var seeded: Boolean = false, var seedVersion: Int = 0) : SeedPrefs
+    private class FakeSeedPrefs(
+        override var seeded: Boolean = false,
+        override var seedVersion: Int = 0
+    ) : SeedPrefs
 
     @Test
     fun freshInstall_createsDefaultMonitorsIncludingWaStatuses() = runTest {
