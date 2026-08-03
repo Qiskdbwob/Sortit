@@ -3,7 +3,7 @@ package com.sortit.util
 import android.content.Context
 import androidx.core.content.edit
 
-class Prefs(private val ctx: Context) {
+class Prefs(private val ctx: Context) : com.sortit.repo.SeedPrefs {
   private val sp = ctx.getSharedPreferences("sortit_prefs", Context.MODE_PRIVATE)
   var seeded: Boolean
     get() = sp.getBoolean("seeded", false)
