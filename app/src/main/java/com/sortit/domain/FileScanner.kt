@@ -26,8 +26,7 @@ object FileScanner {
 
     /** Pisahkan sourceDirs — support newline (baru) dan koma (lama/migrasi). */
     fun splitSourceDirs(raw: String): List<String> =
-        raw.split('
-', '|', ',')
+        raw.split('\n', '|', ',')
             .map { it.trim() }
             .filter { it.isNotBlank() }
 
