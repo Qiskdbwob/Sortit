@@ -93,3 +93,30 @@ MIT — [LICENSE](LICENSE)
 - Butuh **All files access** (API 30+)
 - Auto rule **tidak** diizinkan mode “semua storage”
 - Folder sistem + trash app selalu di-block scan
+
+## CI & Testing (GitHub Actions)
+
+Workflow `.github/workflows/ci.yml` otomatis jalan pada push/PR ke `main`:
+
+1. **Unit test** — `./gradlew testDebugUnitTest`
+2. **Lint** — `./gradlew lintDebug`
+3. **Build debug APK** — `./gradlew assembleDebug`
+
+Jalankan lokal (butuh JDK 17 + Android SDK):
+
+```bash
+./gradlew testDebugUnitTest   # unit test
+./gradlew lintDebug           # static analysis
+./gradlew assembleDebug       # APK debug
+```
+
+> Catatan: perangkat development ini tidak punya Java, jadi build/test dijalankan di GitHub Actions (CI). Hasil APK debug bisa diunduh dari artefak Actions.
+
+## Panduan Izin Storage (All Files Access)
+
+Aplikasi butuh akses seluruh storage untuk scan & sortir file.
+
+- **Android 11+ (API 30+)**: buka **Pengaturan → Aplikasi → Sortit → Izin → Semua akses file** (All files access), aktifkan.
+- **Android 10 ke bawah**: izin **Penyimpanan** (Storage) akan diminta saat pertama kali membuka aplikasi.
+- Jika izin ditolak, aplikasi menampilkan layar "Izin storage dibutuhkan" — tekan **Buka pengaturan** untuk mengaktifkan manual.
+- Auto rule **tidak** diizinkan mode "semua storage" (hanya folder pilihan) demi keamanan.

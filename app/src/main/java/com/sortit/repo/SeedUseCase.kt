@@ -13,7 +13,7 @@ import com.sortit.util.joinMonitorPaths
 class SeedUseCase(private val db: AppDatabase) {
 
     companion object {
-        const val CURRENT_SEED_VERSION = 4
+        const val CURRENT_SEED_VERSION = 5
 
         // Ekstensi sampah yang jarang penting bagi user (tanpa txt/bak).
         const val SAMPAH_EXTS =
@@ -46,7 +46,7 @@ class SeedUseCase(private val db: AppDatabase) {
             return
         }
         if (prefs.seedVersion < CURRENT_SEED_VERSION) {
-            migrateToV4()
+            migrateToV5()
             prefs.seedVersion = CURRENT_SEED_VERSION
         }
     }
@@ -125,6 +125,12 @@ class SeedUseCase(private val db: AppDatabase) {
         ensureDefaultTemplates()
     }
 
+    /** v5: tambah monitor WA Statuses untuk user lama (fresh install sudah dapat via insertInitialDefaults). */
+    private suspend fun migrateToV5() {
+        migrateToV4()
+        ensureWaStatusesMonitor()
+    }
+
     private suspend fun ensureDefaultTemplates() {
         val all = db.templateDao().getAllOnce()
         val hasSampah = all.any { it.isDefault && it.name.equals("sampah", ignoreCase = true) }
@@ -182,6 +188,17 @@ class SeedUseCase(private val db: AppDatabase) {
         if ("video wa" !in names) {
             db.monitorDao().insert(
                 MonitorEntity(name = "Video Wa", path = joinMonitorPaths(WA_VIDEO), isDefault = true)
+            )
+        }
+        ensureWaStatusesMonitor()
+    }
+
+    /** Idempotent: pastikan monitor "WA Statuses" ada (path .Statuses). */
+    private suspend fun ensureWaStatusesMonitor() {
+        val all = db.monitorDao().getAllOnce()
+        if (all.none { it.name.equals("wa statuses", ignoreCase = true) }) {
+            db.monitorDao().insert(
+                MonitorEntity(name = "WA Statuses", path = WA_STATUSES, isDefault = true)
             )
         }
     }

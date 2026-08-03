@@ -68,3 +68,25 @@ _Semua perbaikan bug + improvisasi dari analisis kode penuh_
 - [x] Batalkan review / scan (X)
 - [x] Monitor pindah semua (cap MOVE_ALL_MAX, bukan cuma preview UI)
 - [~] Konsistensi dialog UI/UX penuh (sebagian; dialog scroll + pola AlertDialog sama)
+
+## v1.6.0 (release: stabilitas + fitur preview)
+
+### ✨ Fitur baru
+- **Total size di preview scan** — header review tampilkan total ukuran seluruh file
+  hasil scan (`3 rule · 248 file · 1.2 GB`); bottom bar tampilkan ukuran file yang
+  siap ditindak (`210 siap · 980 MB siap`) — tahu besar data sebelum Pindah/Trash
+
+### 🔧 Perbaikan
+- **Migrasi monitor WA Statuses untuk user lama** — upgrade dari versi sebelumnya
+  sekarang otomatis mendapat monitor `WA Statuses` (path `.Statuses/`), tidak lagi
+  hanya untuk fresh install; idempotent (tidak duplikat), seed v4 → v5
+
+### 🧪 Test & kualitas
+- **Test unit migrasi seed** (`SeedUseCaseTest`) — 3 kasus: fresh install dapat
+  monitor Statuses, upgrade v4 → v5 menambah Statuses tanpa duplikat, monitor
+  custom user tetap dipertahankan
+- **Smoke test UI** (`MainScreenSmokeTest`) — verifikasi layar izin storage
+  (PermissionGate) tampil dan tombol berfungsi
+- **CI diperketat** — lint (`lintDebug`) + unit test + assemble debug
+- `Prefs.seeded` / `Prefs.seedVersion` dibuat `open` agar dapat di-override di
+  unit test tanpa SharedPreferences

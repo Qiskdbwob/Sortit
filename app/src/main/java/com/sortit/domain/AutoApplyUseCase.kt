@@ -11,6 +11,9 @@ import com.sortit.util.parseExtensions
 import com.sortit.util.extensionFolder
 import com.sortit.util.splitMonitorPaths
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.util.Log
 
 /**
  * Auto rule: file baru/ada di source folder rule (FOLDERS) langsung MOVE/TRASH
@@ -102,7 +105,14 @@ class AutoApplyUseCase(
             }
             if (!fileOps.isReadableDir(root)) { skipped++; continue }
             // Rekursif (walkDeep) supaya konsisten dengan scan manual.
-            val files = try { fileOps.walkDeep(root).toList() } catch (_: Exception) { emptyList() }
+            val files = try {
+                withContext(Dispatchers.IO) {
+                    fileOps.walkDeep(root).toList()
+                }
+            } catch (e: Exception) {
+                Log.e("AutoApplyUseCase", "Error walking root $root", e)
+                emptyList()
+            }
             for (f in files) {
                 val path = f.absolutePath
                 if (SystemExcludes.isSystemPath(path)) { skipped++; continue }
@@ -112,7 +122,14 @@ class AutoApplyUseCase(
 
                 val sub = "$baseDir/${extensionFolder(f.name)}"
                 fileOps.mkdirs(sub)
-                val dst = fileOps.move(path, sub)
+                val dst = try {
+                    withContext(Dispatchers.IO) {
+                        fileOps.move(path, sub)
+                    }
+                } catch (e: Exception) {
+                    Log.e("AutoApplyUseCase", "Error moving file $path to $sub", e)
+                    null
+                }
                 if (dst != null) {
                     logDao.insert(
                         com.sortit.data.SortLogEntity(

@@ -99,7 +99,7 @@ fun MainScreen(
 }
 
 @Composable
-private fun PermissionGate(legacy: Boolean, onGrant: () -> Unit) {
+internal fun PermissionGate(legacy: Boolean, onGrant: () -> Unit) {
   Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
     Column(
       Modifier.fillMaxSize().padding(28.dp),

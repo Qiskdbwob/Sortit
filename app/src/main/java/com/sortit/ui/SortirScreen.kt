@@ -151,6 +151,8 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
   val excluded = state.items.count { it.status == "EXCLUDED" }
   val media = state.items.count { it.isMedia }
   val ruleCount = state.items.map { it.templateId }.distinct().size
+  val totalSize = state.items.sumOf { it.size }
+  val pendingSize = state.items.filter { it.status == "PENDING" }.sumOf { it.size }
 
   var query by remember { mutableStateOf("") }
   var ruleFilter by remember { mutableStateOf<Long?>(null) }
@@ -183,7 +185,7 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
         title = {
           Column {
             Text("Review hasil scan", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-            MonoText("$ruleCount rule \u00b7 ${state.items.size} file dicek", style = MaterialTheme.typography.labelSmall)
+            MonoText("$ruleCount rule \u00b7 ${state.items.size} file \u00b7 ${formatSize(totalSize)}", style = MaterialTheme.typography.labelSmall)
           }
         },
         navigationIcon = {
@@ -196,7 +198,7 @@ private fun ScanPreviewScreen(state: ScanUiState.Preview, scanVm: ScanViewModel)
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
           Column(Modifier.weight(1f)) {
             Text("$pending siap ditindak", fontWeight = FontWeight.Bold)
-            MonoText("$excluded dikecualikan \u00b7 $media media", style = MaterialTheme.typography.bodySmall)
+            MonoText("$excluded dikecualikan \u00b7 $media media \u00b7 ${formatSize(pendingSize)} siap", style = MaterialTheme.typography.bodySmall)
           }
           OutlinedButton(
             onClick = {
