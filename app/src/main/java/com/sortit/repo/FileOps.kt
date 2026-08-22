@@ -11,8 +11,6 @@ interface FileOps {
   fun lastModified(path: String): Long
   fun mimeOf(file: File): String?
   fun move(src: String, dstDir: String): String?
-  /** @deprecated Gunakan move(src, TRASH_ROOT) langsung. Ditandai agar mudah ditemukan. */
-  fun moveToTrash(src: String): String?
   fun mkdirs(dir: String): Boolean
   fun isReadableDir(path: String): Boolean
   fun childCount(path: String): Int
@@ -95,13 +93,15 @@ class RealFileOps : FileOps {
       i++
     }
 
-    if (s.renameTo(target)) return target.absolutePath
-    return copyThenDelete(s, target)
-  }
-
-  override fun moveToTrash(src: String): String? {
-    mkdirs(FileOps.TRASH_ROOT)
-    return move(src, FileOps.TRASH_ROOT)
+    if (s.renameTo(target)) {
+      target.setLastModified(System.currentTimeMillis())
+      return target.absolutePath
+    }
+    val copied = copyThenDelete(s, target)
+    if (copied != null) {
+      File(copied).setLastModified(System.currentTimeMillis())
+    }
+    return copied
   }
 
   override fun mkdirs(dir: String): Boolean = File(dir).mkdirs() || File(dir).isDirectory
@@ -140,11 +140,17 @@ class RealFileOps : FileOps {
       src.inputStream().use { input ->
         dst.outputStream().use { output -> input.copyTo(output) }
       }
-      if (src.length() == dst.length() && src.delete()) dst.absolutePath else {
-        if (dst.exists() && src.exists()) dst.delete()
+      if (src.length() == dst.length()) {
+        // Sukses salin: hapus sumber. Kalau gagal hapus, jangan kembalikan dst
+        // supaya tidak ada duplikat (salinan di tujuan + asli di sumber).
+        if (src.delete()) dst.absolutePath else null
+      } else {
+        // Ukuran tidak sama → salinan rusak, bersihkan sisa.
+        if (dst.exists()) dst.delete()
         null
       }
     } catch (_: Exception) {
+      if (dst.exists() && dst.length() == 0L) dst.delete()
       null
     }
   }

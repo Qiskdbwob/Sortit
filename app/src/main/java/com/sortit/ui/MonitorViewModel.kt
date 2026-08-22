@@ -163,26 +163,30 @@ class MonitorViewModel(
             FileObserver.MOVED_FROM or FileObserver.MOVED_TO or FileObserver.CLOSE_WRITE
         observers = paths.filter { File(it).isDirectory }.map { p ->
             object : FileObserver(p, mask) {
-                override fun onEvent(event: Int, path: String?) = poke()
+                // Sampaikan path monitor agar auto-apply hanya memproses rule
+                // yang menyentuh folder ini (bukan seluruh storage).
+                override fun onEvent(event: Int, path: String?) = poke(p)
             }.also { it.startWatching() }
         }
     }
 
     // Debounce: FileObserver burst saat copy banyak file — satukan jadi 1 tick.
-    private fun poke() {
+    private fun poke(monitorPath: String? = null) {
         debounceJob?.cancel()
         debounceJob = viewModelScope.launch {
             delay(400)
             _refreshTick.value++
-            // Auto-apply realtime: ada file baru di folder monitor → proses rule auto
-            // yang menyentuh path ini. Aman: hanya file di path monitor (bukan seluruh storage).
+            // Auto-apply realtime: ada perubahan di folder monitor → proses rule auto
+            // yang menyentuh path ini saja (bukan seluruh storage).
             val auto = autoApply
             if (auto != null && !_operationBusy.value) {
                 _operationBusy.value = true
                 try {
-                    // applyAllEnabled() proses semua rule autoEnabled langsung —
-                    // tidak bergantung interseksi monitor path vs rule source dirs.
-                    val r = auto.applyAllEnabled()
+                    val r = if (!monitorPath.isNullOrBlank()) {
+                        auto.applyForMonitorPaths(monitorPath)
+                    } else {
+                        auto.applyAllEnabled()
+                    }
                     if (r.moved > 0 || r.trashed > 0 || r.failed > 0) {
                         _autoMsg.value = "Auto: pindah ${r.moved} · trash ${r.trashed} · gagal ${r.failed}"
                     }

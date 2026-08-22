@@ -45,6 +45,9 @@ class SortFilesUseCase(
             }
             if (dst != null) {
                 done++
+                // Dedup: hapus log lama yang menunjuk ke lokasi sumber ini
+                // (file sudah dipindah lagi), supaya riwayat tidak punya entri hantu.
+                logDao.deleteByDstPath(item.path)
                 logDao.insert(
                     com.sortit.data.SortLogEntity(
                         templateId = templateId,

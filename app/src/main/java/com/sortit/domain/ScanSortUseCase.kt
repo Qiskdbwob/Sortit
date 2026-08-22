@@ -29,6 +29,7 @@ class ScanSortUseCase(private val fileOps: FileOps) {
     ): Flow<Progress> = flow {
         var scanned = 0
         var found = 0
+        var lastEmit = 0L
         val seen = mutableSetOf<String>()
         val now = System.currentTimeMillis()
 
@@ -67,8 +68,11 @@ class ScanSortUseCase(private val fileOps: FileOps) {
                                     isMedia = mime?.startsWith("image/") == true || mime?.startsWith("video/") == true
                                 )
                             )
-                            emit(Progress(scanned, found, path))
-                        } else {
+                        }
+                        // Throttle emit: per ~200 file atau tiap ~120ms agar UI tidak banjir.
+                        val t = System.currentTimeMillis()
+                        if (matches || scanned % 200 == 0 || t - lastEmit >= 120) {
+                            lastEmit = t
                             emit(Progress(scanned, found, path))
                         }
                     }

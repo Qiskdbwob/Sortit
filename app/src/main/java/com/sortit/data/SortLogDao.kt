@@ -21,6 +21,9 @@ interface SortLogDao {
   @Query("DELETE FROM sort_logs WHERE id IN (:ids)")
   suspend fun deleteIds(ids: List<Long>)
 
+  @Query("DELETE FROM sort_logs WHERE dstPath = :path")
+  suspend fun deleteByDstPath(path: String)
+
   @Query("SELECT * FROM sort_logs WHERE templateId = :templateId ORDER BY timestamp DESC LIMIT :limit")
   suspend fun recent(templateId: Long, limit: Int = 200): List<SortLogEntity>
 

@@ -15,7 +15,10 @@ class TrashCleanupWorker(
     val sortitApp = app as? com.sortit.SortitApplication ?: return Result.failure()
     TrashCleanupUseCase(sortitApp.fileOps, sortitApp.prefs).cleanup()
     withContext(Dispatchers.IO) {
-      val cutoff = System.currentTimeMillis() - (90L * 86_400_000L)
+      // Log retensi ikut preferensi trash (bukan hardcoded 90 hari) supaya
+      // riwayat sampah & log sinkron dengan umur file di trash.
+      val retentionMs = sortitApp.prefs.trashRetentionDays * 86_400_000L
+      val cutoff = System.currentTimeMillis() - retentionMs
       sortitApp.db.sortLogDao().deleteOlderThan(cutoff)
     }
     return Result.success()

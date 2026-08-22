@@ -118,7 +118,11 @@ class HistoryViewModel(
             if (dst != null) {
                 ok++
                 // Perbarui log ke path baru agar Riwayat tetap sinkron (bukan dihapus).
-                h.log?.let { logRepo.update(it.copy(dstPath = dst, templateId = 0L)) }
+                // srcPath diset ke lokasi sebelumnya supaya Undo kembali ke folder itu,
+                // bukan ke asal paling awal (konsisten maju-mundur).
+                h.log?.let {
+                    logRepo.update(it.copy(srcPath = h.path, dstPath = dst, templateId = 0L))
+                }
             } else {
                 fail++
                 failures.add(h.name)

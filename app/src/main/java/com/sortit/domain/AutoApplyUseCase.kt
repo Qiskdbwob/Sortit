@@ -33,7 +33,10 @@ class AutoApplyUseCase(
     )
 
     suspend fun applyAllEnabled(): Result {
-        val rules = templateRepo.getAllOnce().filter { it.enabled && it.autoEnabled }
+        // Guard: auto-apply di SELURUH storage (sourceMode=ALL) berbahaya —
+        // hanya izinkan rule berbasis folder tertentu (sejalan validasi UI).
+        val rules = templateRepo.getAllOnce()
+            .filter { it.enabled && it.autoEnabled && it.sourceMode != "ALL" }
         if (rules.isEmpty()) return Result()
         var moved = 0
         var trashed = 0
@@ -131,6 +134,8 @@ class AutoApplyUseCase(
                     null
                 }
                 if (dst != null) {
+                    // Dedup: hapus log lama yang menunjuk ke lokasi sumber ini.
+                    logDao.deleteByDstPath(path)
                     logDao.insert(
                         com.sortit.data.SortLogEntity(
                             templateId = rule.id,
