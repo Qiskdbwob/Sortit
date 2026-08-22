@@ -19,7 +19,6 @@ class FakeFileOps(private val files: List<File>) : FileOps {
         moved.add(src to dstDir)
         return "$dstDir/${File(src).name}"
     }
-    override fun moveToTrash(src: String): String? = move(src, FileOps.TRASH_ROOT)
     override fun mkdirs(dir: String): Boolean = true
     override fun isReadableDir(path: String): Boolean = true
     override fun childCount(path: String): Int = files.count { it.absolutePath == path || it.absolutePath.startsWith("$path/") }

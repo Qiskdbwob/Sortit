@@ -84,7 +84,6 @@ private class MapFileOps : FileOps {
         return dst
     }
 
-    override fun moveToTrash(src: String): String? = move(src, FileOps.TRASH_ROOT)
     override fun mkdirs(dir: String): Boolean {
         existingDirs += dir.trimEnd('/')
         readableDirs += dir.trimEnd('/')

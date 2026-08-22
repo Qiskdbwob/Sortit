@@ -45,7 +45,6 @@ private class ScanFakeOps : FileOps {
     override fun mimeOf(file: File): String? =
         if (file.name.endsWith(".jpg", true)) "image/jpeg" else null
     override fun move(src: String, dstDir: String): String? = null
-    override fun moveToTrash(src: String): String? = null
     override fun mkdirs(dir: String): Boolean = true
     override fun isReadableDir(path: String): Boolean = readable.contains(path.trimEnd('/'))
     override fun childCount(path: String): Int = listFiles(path).size

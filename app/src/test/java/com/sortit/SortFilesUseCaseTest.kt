@@ -30,6 +30,7 @@ class FakeLogDao : SortLogDao {
     override fun observeTrashedCount(): Flow<Int> = flowOf(rows.count { it.status == "OK" && it.dstPath.contains("/.sortit-trash/") })
     override fun observeFailedCount(): Flow<Int> = flowOf(rows.count { it.status == "FAIL" })
     override suspend fun deleteOlderThan(cutoff: Long) { }
+    override suspend fun deleteByDstPath(path: String) { rows.removeAll { it == path } }
     override suspend fun update(l: com.sortit.data.SortLogEntity) {
         val idx = rows.indexOfFirst { it.id == l.id }
         if (idx >= 0) rows[idx] = l else rows.add(l)
@@ -51,7 +52,6 @@ private fun ops(moveResult: (String, String) -> String?): FileOps = object : Fil
     override fun lastModified(path: String): Long = 0
     override fun mimeOf(file: File): String? = null
     override fun move(src: String, dstDir: String): String? = moveResult(src, dstDir)
-    override fun moveToTrash(src: String): String? = moveResult(src, FileOps.TRASH_ROOT)
     override fun mkdirs(dir: String): Boolean = true
     override fun isReadableDir(path: String): Boolean = true
     override fun childCount(path: String): Int = 0
