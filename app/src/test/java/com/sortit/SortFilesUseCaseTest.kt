@@ -30,7 +30,7 @@ class FakeLogDao : SortLogDao {
     override fun observeTrashedCount(): Flow<Int> = flowOf(rows.count { it.status == "OK" && it.dstPath.contains("/.sortit-trash/") })
     override fun observeFailedCount(): Flow<Int> = flowOf(rows.count { it.status == "FAIL" })
     override suspend fun deleteOlderThan(cutoff: Long) { }
-    override suspend fun deleteByDstPath(path: String) { rows.removeAll { it == path } }
+    override suspend fun deleteByDstPath(path: String) { rows.removeAll { it.dstPath == path } }
     override suspend fun update(l: com.sortit.data.SortLogEntity) {
         val idx = rows.indexOfFirst { it.id == l.id }
         if (idx >= 0) rows[idx] = l else rows.add(l)
