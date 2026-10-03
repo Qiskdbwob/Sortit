@@ -9,7 +9,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 
 // Eksekusi pemindahan file terpilih (sudah lewat preview gate).
-// MOVE = pindah ke <targetDir>/<ekstensi>/; TRASH = pindah ke .sortit-trash/<ekstensi>/
+// MOVE = pindah LANGSUNG ke targetDir (/Download/1.txt, tanpa subfolder ekstensi).
+// TRASH = pindah ke .sortit-trash/<ekstensi>/ (dikelompokkan supaya retensi mudah).
 class SortFilesUseCase(
     private val fileOps: FileOps,
     private val logDao: SortLogDao
@@ -36,13 +37,12 @@ class SortFilesUseCase(
         fileOps.mkdirs(baseDir)
 
         for (item in items) {
-            val subDir = "$baseDir/${extensionFolder(item.name)}"
-            fileOps.mkdirs(subDir)
+            // MOVE: user pilih /Download → hasil /Download/1.txt (flat, tanpa folder ekstensi).
+            // TRASH: tetap .sortit-trash/txt/... agar pembersihan & retensi per folder.
+            val dstDir = if (action == Action.TRASH) "$baseDir/${extensionFolder(item.name)}" else baseDir
+            fileOps.mkdirs(dstDir)
 
-            val dst = when (action) {
-                Action.MOVE -> fileOps.move(item.path, subDir)
-                Action.TRASH -> fileOps.move(item.path, subDir)
-            }
+            val dst = fileOps.move(item.path, dstDir)
             if (dst != null) {
                 done++
                 // Dedup: hapus log lama yang menunjuk ke lokasi sumber ini

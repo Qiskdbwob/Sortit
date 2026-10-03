@@ -28,4 +28,8 @@ class Prefs(private val ctx: Context) : com.sortit.repo.SeedPrefs {
   var trashRetentionDays: Int
     get() = sp.getInt("trash_retention_days", 14)
     set(v) = sp.edit { putInt("trash_retention_days", v) }
+  /** Ringkasan hasil auto-apply terakhir — dipakai subtitle Quick Settings tile. */
+  var lastAutoSummary: String
+    get() = sp.getString("last_auto_summary", "") ?: ""
+    set(v) = sp.edit { putString("last_auto_summary", v) }
 }

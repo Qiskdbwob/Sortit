@@ -47,7 +47,6 @@ class SortLogRepository(private val db: AppDatabase) {
 
     suspend fun listTrashed(limit: Int = 2000): List<SortLogEntity> = db.sortLogDao().listTrashed(limit)
     suspend fun listMoved(limit: Int = 2000): List<SortLogEntity> = db.sortLogDao().listMoved(limit)
-    suspend fun listOk(limit: Int = 3000): List<SortLogEntity> = db.sortLogDao().listOk(limit)
     suspend fun listAll(limit: Int = 3000): List<SortLogEntity> = db.sortLogDao().listAll(limit)
     suspend fun delete(log: SortLogEntity) = db.sortLogDao().delete(log)
     suspend fun update(log: SortLogEntity) = db.sortLogDao().update(log)

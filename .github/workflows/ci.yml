@@ -29,6 +29,9 @@ jobs:
       - name: Unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
 
+      - name: Lint (static analysis)
+        run: ./gradlew lintDebug --no-daemon
+
       - name: Assemble debug (compile check)
         run: ./gradlew assembleDebug --no-daemon
 

@@ -1,5 +1,12 @@
 package com.sortit.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +47,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,8 +79,24 @@ fun MainScreen(
   val settingsLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
     contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
   ) { granted = StorageAccess.has(context) }
+  // Notifikasi hasil auto-sortir (Android 13+ butuh izin runtime; kalau tidak
+  // diminta, notif senyap gagal diam-diam karena POST_NOTIFICATIONS ditolak).
+  val notifLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+    contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+  ) { }
 
   LaunchedEffect(Unit) { granted = StorageAccess.has(context) }
+  LaunchedEffect(granted) {
+    if (!granted) return@LaunchedEffect
+    if (
+      android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+      androidx.core.content.ContextCompat.checkSelfPermission(
+        context, android.Manifest.permission.POST_NOTIFICATIONS
+      ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+    ) {
+      notifLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+  }
 
   if (!granted) {
     PermissionGate(
@@ -89,6 +113,15 @@ fun MainScreen(
   }
 
   val scanState by scanVm.state.collectAsState()
+  // Tombol Back di alur scan: tutup preview / batal scan, bukan keluar app.
+  androidx.activity.compose.BackHandler(enabled = scanState !is ScanUiState.Idle) {
+    when (val s = scanState) {
+      is ScanUiState.Preview -> scanVm.closePreview()
+      is ScanUiState.Scanning -> scanVm.reset()
+      is ScanUiState.Running -> Unit // proses destruktif berjalan — biarkan selesai
+      else -> scanVm.reset()
+    }
+  }
   Box(Modifier.fillMaxSize()) {
     MainTabs(dashboardVm, templateVm, monitorVm, scanVm, historyVm, onDynamicColorChange, themeMode, onThemeModeChange)
     when (val s = scanState) {
@@ -134,7 +167,7 @@ private fun MainTabs(
   themeMode: String,
   onThemeModeChange: (String) -> Unit
 ) {
-  var tab by remember { mutableIntStateOf(0) }
+  var tab by rememberSaveable { mutableIntStateOf(0) }
   var showScanLauncher by remember { mutableStateOf(false) }
   var addRuleRequest by remember { mutableStateOf(false) }
   var showSettings by remember { mutableStateOf(false) }
@@ -193,24 +226,38 @@ private fun MainTabs(
       }
     }
   ) { pad ->
-    when (tab) {
-      0 -> DashboardScreen(
-        vm = dashboardVm,
-        scanVm = scanVm,
-        onScan = { showScanLauncher = true },
-        onAddRule = { tab = 1; addRuleRequest = true },
-        modifier = Modifier.padding(pad)
-      )
-      1 -> RulesScreen(
-        modifier = Modifier.padding(pad),
-        vm = templateVm,
-        scanVm = scanVm,
-        addRuleRequest = addRuleRequest,
-        onAddRuleConsumed = { addRuleRequest = false },
-        onScanRules = { ids -> scanVm.requestScan(ids) }
-      )
-      2 -> MonitorScreen(monitorVm, modifier = Modifier.padding(pad))
-      else -> HistoryScreen(historyVm, modifier = Modifier.padding(pad))
+    // Transisi antar tab: slide pendek + fade, arah mengikuti urutan tab.
+    AnimatedContent(
+      targetState = tab,
+      transitionSpec = {
+        val forward = targetState > initialState
+        val enter = slideInHorizontally(animationSpec = tween(220)) { w -> if (forward) w / 6 else -w / 6 } +
+          fadeIn(animationSpec = tween(220))
+        val exit = slideOutHorizontally(animationSpec = tween(180)) { w -> if (forward) -w / 6 else w / 6 } +
+          fadeOut(animationSpec = tween(160))
+        enter togetherWith exit
+      },
+      label = "tab"
+    ) { current ->
+      when (current) {
+        0 -> DashboardScreen(
+          vm = dashboardVm,
+          scanVm = scanVm,
+          onScan = { showScanLauncher = true },
+          onAddRule = { tab = 1; addRuleRequest = true },
+          modifier = Modifier.padding(pad)
+        )
+        1 -> RulesScreen(
+          modifier = Modifier.padding(pad),
+          vm = templateVm,
+          scanVm = scanVm,
+          addRuleRequest = addRuleRequest,
+          onAddRuleConsumed = { addRuleRequest = false },
+          onScanRules = { ids -> scanVm.requestScan(ids) }
+        )
+        2 -> MonitorScreen(monitorVm, modifier = Modifier.padding(pad))
+        else -> HistoryScreen(historyVm, modifier = Modifier.padding(pad))
+      }
     }
   }
 

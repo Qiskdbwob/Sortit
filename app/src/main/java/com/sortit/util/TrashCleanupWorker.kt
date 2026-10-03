@@ -2,25 +2,49 @@ package com.sortit.util
 
 import android.content.Context
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.sortit.SortitApplication
+import java.util.concurrent.TimeUnit
 
 class TrashCleanupWorker(
   context: Context,
   params: WorkerParameters
 ) : CoroutineWorker(context, params) {
   override suspend fun doWork(): Result {
-    val app = applicationContext as? android.app.Application ?: return Result.failure()
-    val sortitApp = app as? com.sortit.SortitApplication ?: return Result.failure()
-    TrashCleanupUseCase(sortitApp.fileOps, sortitApp.prefs).cleanup()
-    withContext(Dispatchers.IO) {
-      // Log retensi ikut preferensi trash (bukan hardcoded 90 hari) supaya
-      // riwayat sampah & log sinkron dengan umur file di trash.
-      val retentionMs = sortitApp.prefs.trashRetentionDays * 86_400_000L
-      val cutoff = System.currentTimeMillis() - retentionMs
-      sortitApp.db.sortLogDao().deleteOlderThan(cutoff)
-    }
+    val app = applicationContext as? SortitApplication ?: return Result.failure()
+    TrashCleanupUseCase(app.fileOps, app.prefs).cleanupWithLogs(app.db)
     return Result.success()
+  }
+
+  companion object {
+    private const val PERIODIC_WORK = "trash_cleanup"
+    private const val NOW_WORK = "trash_cleanup_now"
+
+    /** Jadwal harian — retensi tetap jalan walau app jarang dibuka. */
+    fun schedulePeriodic(context: Context) {
+      WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        PERIODIC_WORK,
+        ExistingPeriodicWorkPolicy.KEEP,
+        PeriodicWorkRequestBuilder<TrashCleanupWorker>(1, TimeUnit.DAYS).build()
+      )
+    }
+
+    /**
+     * Paksa cleanup secepatnya (tanpa menunggu jadwal harian): dipakai saat app
+     * start, setelah retensi diubah di Pengaturan, dsb. Hasilnya terlihat dalam
+     * beberapa detik.
+     */
+    fun enqueueNow(context: Context) {
+      WorkManager.getInstance(context).enqueueUniqueWork(
+        NOW_WORK,
+        ExistingWorkPolicy.KEEP,
+        OneTimeWorkRequestBuilder<TrashCleanupWorker>().build()
+      )
+    }
   }
 }

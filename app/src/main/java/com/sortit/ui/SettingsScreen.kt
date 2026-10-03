@@ -42,7 +42,10 @@ import com.sortit.ui.components.MonoText
 import com.sortit.ui.components.PathInputField
 import com.sortit.ui.components.SortitDialog
 import com.sortit.ui.components.StampKind
+import com.sortit.ui.components.formatSize
 import com.sortit.util.StoragePaths
+import com.sortit.util.TrashCleanupUseCase
+import com.sortit.util.TrashCleanupWorker
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 
@@ -70,6 +73,8 @@ fun SettingsDialog(
   var reloadTick by remember { mutableIntStateOf(0) }
   var seedResetMsg by remember { mutableStateOf<String?>(null) }
   var seedResetting by remember { mutableStateOf(false) }
+  var cleanupMsg by remember { mutableStateOf<String?>(null) }
+  var cleaning by remember { mutableStateOf(false) }
 
   fun reloadExcludes() {
     scope.launch {
@@ -189,13 +194,44 @@ fun SettingsDialog(
       Slider(
         value = retentionDays.toFloat(),
         onValueChange = { retentionDays = it.toInt() },
-        onValueChangeFinished = { app.prefs.trashRetentionDays = retentionDays },
+        onValueChangeFinished = {
+          app.prefs.trashRetentionDays = retentionDays
+          cleanupMsg = null
+          // Retensi baru langsung berlaku: jalankan cleanup segera, jangan
+          // menunggu jadwal harian (dulu terasa "tidak berfungsi").
+          TrashCleanupWorker.enqueueNow(context.applicationContext)
+        },
         valueRange = 1f..90f,
         steps = 0
       )
       Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text("1 hari", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("90 hari", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+      OutlinedButton(
+        onClick = {
+          scope.launch {
+            cleaning = true
+            cleanupMsg = null
+            try {
+              val r = TrashCleanupUseCase(app.fileOps, app.prefs).cleanupWithLogs(app.db)
+              cleanupMsg = if (r.deletedCount == 0) "Tidak ada file kedaluwarsa di trash."
+              else "${r.deletedCount} file dihapus · ${formatSize(r.freedBytes)} dibebaskan."
+            } catch (e: Exception) {
+              cleanupMsg = "Gagal membersihkan: ${e.message}"
+            } finally {
+              cleaning = false
+            }
+          }
+        },
+        enabled = !cleaning
+      ) { Text(if (cleaning) "Membersihkan…" else "Bersihkan sekarang") }
+      if (cleanupMsg != null) {
+        Text(
+          cleanupMsg!!,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.primary
+        )
       }
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

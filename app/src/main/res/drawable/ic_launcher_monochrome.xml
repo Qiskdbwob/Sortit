@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Monochrome untuk ikon bertema Android 13+: satu path evenOdd,
+         lubang tali jadi transparan (sistem yang memberi warna tint). -->
+    <path
+        android:pathData="M27,54 L43,38 L77,38 L81,42 L81,66 L77,70 L43,70 Z M31,54 A5,5 0 1,0 41,54 A5,5 0 1,0 31,54 Z"
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd" />
+
+</vector>

@@ -1,22 +1,9 @@
 package com.sortit.domain
 
 import com.sortit.data.TemplateEntity
-import com.sortit.repo.FileOps
-import com.sortit.util.SystemExcludes
-import com.sortit.util.matchesExtension
-import com.sortit.util.parseExtensions
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
-import android.util.Log
 
 // Shared scan engine: roots, system/global/per-rule exclude, extension, size, age.
 object FileScanner {
-
-    data class Candidate(
-        val templateId: Long,
-        val item: FileItem
-    )
 
     fun resolveRoots(template: TemplateEntity): List<String> =
         when (template.sourceMode) {
@@ -60,60 +47,5 @@ object FileScanner {
             if (ageMs < needMs) return false
         }
         return true
-    }
-
-    fun scanTemplate(
-        template: TemplateEntity,
-        fileOps: FileOps,
-        excludePatterns: Set<String>,
-        seen: MutableSet<String>
-    ): List<Candidate> {
-        val exts = parseExtensions(template.extensions)
-        if (exts.isEmpty()) return emptyList()
-        val now = System.currentTimeMillis()
-
-        return try {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    val out = mutableListOf<Candidate>()
-                    for (root in resolveRoots(template)) {
-                        if (SystemExcludes.isSystemPath(root) || isRootExcluded(root, excludePatterns)) continue
-                        if (!fileOps.isReadableDir(root)) continue
-                        val seq = try { fileOps.walkDeep(root) } catch (_: Exception) { emptySequence() }
-                        try {
-                            seq.filter { !SystemExcludes.isSystemPath(it.absolutePath) }
-                                .filter { matchesExtension(it.name, exts) }
-                                .filter { !isExcluded(it.absolutePath, it.name, excludePatterns) }
-                                .filter { matchesMeta(template, it.length(), it.lastModified(), now) }
-                                .forEach { f ->
-                                    if (seen.add(f.absolutePath)) {
-                                        val mime = fileOps.mimeOf(f)
-                                        out.add(
-                                            Candidate(
-                                                templateId = template.id,
-                                                item = FileItem(
-                                                    path = f.absolutePath,
-                                                    name = f.name,
-                                                    size = f.length(),
-                                                    mimeType = mime,
-                                                    lastModified = f.lastModified(),
-                                                    isMedia = mime?.startsWith("image/") == true ||
-                                                            mime?.startsWith("video/") == true
-                                                )
-                                            )
-                                        )
-                                    }
-                                }
-                        } catch (e: Exception) {
-                            Log.e("FileScanner", "Error scanning root $root", e)
-                        }
-                    }
-                    out
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("FileScanner", "Error scanning template ${template.id}", e)
-            emptyList()
-        }
     }
 }

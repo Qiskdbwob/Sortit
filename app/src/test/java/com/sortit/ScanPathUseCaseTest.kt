@@ -47,7 +47,6 @@ private class ScanFakeOps : FileOps {
     override fun move(src: String, dstDir: String): String? = null
     override fun mkdirs(dir: String): Boolean = true
     override fun isReadableDir(path: String): Boolean = readable.contains(path.trimEnd('/'))
-    override fun childCount(path: String): Int = listFiles(path).size
     override fun restore(src: String, dstDir: String): String? = null
     override fun listTrashFiles(): List<File> = emptyList()
     override fun deleteFile(path: String): Boolean = false

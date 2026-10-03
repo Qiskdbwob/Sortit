@@ -34,7 +34,4 @@ interface ScanItemDao {
 
   @Query("SELECT COUNT(*) FROM scan_items WHERE sessionId IN (SELECT id FROM scan_sessions WHERE status = 'PREVIEW') AND status = 'PENDING'")
   fun observeGlobalPendingCount(): Flow<Int>
-
-  @Query("DELETE FROM scan_items WHERE sessionId = :sessionId")
-  suspend fun deleteForSession(sessionId: Long)
 }

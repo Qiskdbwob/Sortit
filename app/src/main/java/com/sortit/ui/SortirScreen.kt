@@ -1,5 +1,7 @@
 package com.sortit.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -120,7 +122,13 @@ private fun ScanProgressDialog(state: ScanUiState.Scanning, scanVm: ScanViewMode
 
 @Composable
 private fun SortProgressDialog(state: ScanUiState.Running, scanVm: ScanViewModel) {
-  val progress = if (state.total == 0) 0f else (state.done + state.failed).toFloat() / state.total.toFloat()
+  val target = if (state.total == 0) 0f else (state.done + state.failed).toFloat() / state.total.toFloat()
+  // Animasi halus antar update progress — tidak melompat per file.
+  val progress by animateFloatAsState(
+    targetValue = target,
+    animationSpec = tween(220),
+    label = "sortProgress"
+  )
   SortitDialog(
     title = if (state.action == SortFilesUseCase.Action.TRASH) "Memindah ke trash..." else "Memindahkan file...",
     onDismiss = { }

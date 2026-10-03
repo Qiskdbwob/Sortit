@@ -130,11 +130,10 @@ class SortitApplication : Application(), ImageLoaderFactory {
         // Sesi berikutnya akan mencoba lagi (seedVersion belum naik).
       }
     }
-    WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-      "trash_cleanup",
-      ExistingPeriodicWorkPolicy.KEEP,
-      PeriodicWorkRequestBuilder<TrashCleanupWorker>(1, TimeUnit.DAYS).build()
-    )
+    // Retensi trash: harian + sekali di awal start supaya user melihat efeknya
+    // tanpa menunggu 24 jam (dan bisa dipaksa dari Pengaturan).
+    TrashCleanupWorker.schedulePeriodic(this)
+    TrashCleanupWorker.enqueueNow(this)
     WorkManager.getInstance(this).enqueueUniquePeriodicWork(
       "auto_apply",
       ExistingPeriodicWorkPolicy.KEEP,

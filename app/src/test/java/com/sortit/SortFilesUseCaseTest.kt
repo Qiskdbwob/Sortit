@@ -24,12 +24,18 @@ class FakeLogDao : SortLogDao {
         rows.filter { it.status == "OK" && it.dstPath.contains("/.sortit-trash/") }
     override suspend fun listMoved(limit: Int): List<SortLogEntity> =
         rows.filter { it.status == "OK" && !it.dstPath.contains("/.sortit-trash/") }
-    override suspend fun listOk(limit: Int): List<SortLogEntity> =
-        rows.filter { it.status == "OK" }
     override fun observeMovedCount(): Flow<Int> = flowOf(rows.count { it.status == "OK" && !it.dstPath.contains("/.sortit-trash/") })
     override fun observeTrashedCount(): Flow<Int> = flowOf(rows.count { it.status == "OK" && it.dstPath.contains("/.sortit-trash/") })
     override fun observeFailedCount(): Flow<Int> = flowOf(rows.count { it.status == "FAIL" })
-    override suspend fun deleteOlderThan(cutoff: Long) { }
+    override suspend fun deleteTrashedOlderThan(cutoff: Long) {
+        rows.removeAll { it.dstPath.contains("/.sortit-trash/") && it.timestamp < cutoff }
+    }
+    override suspend fun trimTo(max: Int) {
+        if (rows.size > max) {
+            val keep = rows.sortedByDescending { it.timestamp }.take(max).map { it.id }.toSet()
+            rows.removeAll { it.id !in keep }
+        }
+    }
     override suspend fun deleteByDstPath(path: String) { rows.removeAll { it.dstPath == path } }
     override suspend fun update(l: com.sortit.data.SortLogEntity) {
         val idx = rows.indexOfFirst { it.id == l.id }
@@ -42,6 +48,11 @@ class FakeLogDao : SortLogDao {
         kotlinx.coroutines.flow.flowOf(rows.count { it.status == "OK" && it.dstPath.contains("/.sortit-trash/") && it.timestamp >= since })
     override fun observeFailedCountSince(since: Long): kotlinx.coroutines.flow.Flow<Int> =
         kotlinx.coroutines.flow.flowOf(rows.count { it.status == "FAIL" && it.timestamp >= since })
+    override suspend fun movedCountSinceOnce(since: Long): Int =
+        rows.count { it.status == "OK" && !it.dstPath.contains("/.sortit-trash/") && it.timestamp >= since }
+    override suspend fun trashedCountSinceOnce(since: Long): Int =
+        rows.count { it.status == "OK" && it.dstPath.contains("/.sortit-trash/") && it.timestamp >= since }
+    override suspend fun latestOnce(): SortLogEntity? = rows.maxByOrNull { it.timestamp }
 }
 
 private fun ops(moveResult: (String, String) -> String?): FileOps = object : FileOps {
@@ -54,7 +65,6 @@ private fun ops(moveResult: (String, String) -> String?): FileOps = object : Fil
     override fun move(src: String, dstDir: String): String? = moveResult(src, dstDir)
     override fun mkdirs(dir: String): Boolean = true
     override fun isReadableDir(path: String): Boolean = true
-    override fun childCount(path: String): Int = 0
     override fun restore(src: String, dstDir: String): String? = move(src, dstDir)
     override fun listTrashFiles(): List<File> = emptyList()
     override fun deleteFile(path: String): Boolean = true
@@ -92,5 +102,33 @@ class SortFilesUseCaseTest {
         use.execute(1, "/out", items, SortFilesUseCase.Action.TRASH).collect { done = it.done }
         assertEquals(1, done)
         assertEquals(1, log.rows.count { it.dstPath.startsWith(FileOps.TRASH_ROOT) })
+    }
+
+    @Test
+    fun `move goes flat into target dir without extension subfolder`() = runBlocking {
+        val log = FakeLogDao()
+        var dstDirSeen: String? = null
+        val use = SortFilesUseCase(ops { src, dst ->
+            dstDirSeen = dst
+            "$dst/${File(src).name}"
+        }, log)
+        val items = listOf(FileItem("/a/1.txt", "1.txt", 10, null, 0, false))
+        use.execute(1, "/download", items).collect { }
+        // Regresi: dulu file masuk ke /download/txt/1.txt — harusnya /download/1.txt.
+        assertEquals("/download", dstDirSeen)
+        assertEquals("/download/1.txt", log.rows.first { it.status == "OK" }.dstPath)
+    }
+
+    @Test
+    fun `trash keeps extension subfolder for retention`() = runBlocking {
+        val log = FakeLogDao()
+        var dstDirSeen: String? = null
+        val use = SortFilesUseCase(ops { src, dst ->
+            dstDirSeen = dst
+            "$dst/${File(src).name}"
+        }, log)
+        val items = listOf(FileItem("/a/1.txt", "1.txt", 10, null, 0, false))
+        use.execute(1, "/download", items, SortFilesUseCase.Action.TRASH).collect { }
+        assertEquals("${FileOps.TRASH_ROOT}/txt", dstDirSeen)
     }
 }

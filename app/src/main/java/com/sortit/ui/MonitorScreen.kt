@@ -73,6 +73,7 @@ import com.sortit.util.splitMonitorPaths
 import com.sortit.util.truncateFileName
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -82,6 +83,9 @@ fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
   val operationMsg by vm.operationMsg.collectAsState()
   var showAdd by remember { mutableStateOf(false) }
   var editing by remember { mutableStateOf<MonitorEntity?>(null) }
+  var confirmAutoAll by remember { mutableStateOf(false) }
+  var confirmDelete by remember { mutableStateOf<MonitorEntity?>(null) }
+  var confirmTrash by remember { mutableStateOf<Set<String>?>(null) }
 
   LazyColumn(
     modifier = modifier,
@@ -100,7 +104,7 @@ fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
           Text("Monitor path", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          OutlinedButton(onClick = { vm.runAutoAll() }) { Text("Auto") }
+          OutlinedButton(onClick = { confirmAutoAll = true }) { Text("Auto") }
           OutlinedButton(onClick = { showAdd = true }) {
             Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.size(6.dp))
@@ -134,7 +138,65 @@ fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
         )
       }
     } else {
-      items(list, key = { it.id }) { m -> MonitorCard(m, vm, onEdit = { editing = m }) }
+      items(list, key = { it.id }) { m ->
+        MonitorCard(
+          m,
+          vm,
+          onEdit = { editing = m },
+          onDelete = { confirmDelete = m },
+          onTrash = { paths -> confirmTrash = paths }
+        )
+      }
+    }
+  }
+
+  if (confirmAutoAll) {
+    SortitDialog(
+      title = "Jalankan Auto semua?",
+      onDismiss = { confirmAutoAll = false },
+      confirmButton = {
+        Button(onClick = {
+          confirmAutoAll = false
+          vm.runAutoAll()
+        }) { Text("Ya, jalankan") }
+      },
+      dismissButton = { TextButton(onClick = { confirmAutoAll = false }) { Text("Batal") } }
+    ) {
+      Text("Semua rule auto yang aktif akan memproses file di folder sumbernya sekarang — tanpa review.")
+      Text("File yang cocok langsung dipindah atau dipindah ke trash sesuai aturan rule.")
+    }
+  }
+
+  confirmDelete?.let { m ->
+    SortitDialog(
+      title = "Hapus monitor?",
+      onDismiss = { confirmDelete = null },
+      confirmButton = {
+        TextButton(onClick = {
+          vm.delete(m)
+          confirmDelete = null
+        }) { Text("Hapus", color = MaterialTheme.colorScheme.error) }
+      },
+      dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Batal") } }
+    ) {
+      Text("Monitor '${m.name}' dihapus dari daftar. File di folder tersebut tidak dihapus.")
+    }
+  }
+
+  confirmTrash?.let { paths ->
+    SortitDialog(
+      title = "Pindahkan ke trash?",
+      onDismiss = { confirmTrash = null },
+      confirmButton = {
+        Button(onClick = {
+          confirmTrash = null
+          vm.trashSelected(paths)
+        }) { Text("Ya, trash") }
+      },
+      dismissButton = { TextButton(onClick = { confirmTrash = null }) { Text("Batal") } }
+    ) {
+      Text("${paths.size} file akan dipindah ke trash (.sortit-trash).")
+      Text("Masih bisa dikembalikan lewat tab Riwayat → Sampah.")
     }
   }
 
@@ -161,7 +223,13 @@ fun MonitorScreen(vm: MonitorViewModel, modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Unit) {
+private fun MonitorCard(
+  m: MonitorEntity,
+  vm: MonitorViewModel,
+  onEdit: () -> Unit,
+  onDelete: () -> Unit,
+  onTrash: (Set<String>) -> Unit
+) {
   val context = LocalContext.current
   val scan = remember { ScanPathUseCase(RealFileOps()) }
   val paths = remember(m.path) { splitMonitorPaths(m.path) }
@@ -180,6 +248,7 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Un
   var showFiles by remember { mutableStateOf(false) }
   var selectMode by remember { mutableStateOf(false) }
   var selectedPaths by remember { mutableStateOf(setOf<String>()) }
+  val selectAllScope = androidx.compose.runtime.rememberCoroutineScope()
 
   val safLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
     uri ?: return@rememberLauncherForActivityResult
@@ -240,10 +309,10 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Un
         IconButton(onClick = onEdit) {
           Icon(Icons.Default.Edit, contentDescription = "Edit")
         }
-        IconButton(onClick = { vm.runAutoFor(m) }) {
+        IconButton(onClick = { vm.runAutoFor(m) }, enabled = !busy) {
           Icon(Icons.Default.PlayArrow, contentDescription = "Jalankan auto")
         }
-        IconButton(onClick = { vm.delete(m) }) {
+        IconButton(onClick = onDelete) {
           Icon(Icons.Default.Delete, contentDescription = "Hapus")
         }
       }
@@ -329,9 +398,14 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Un
               IconButton(
                 enabled = !busy,
                 onClick = {
-                  // Ambil sampai MOVE_ALL_MAX biar file di luar preview UI ikut
-                  val all = scan.inspect(m.path, ScanPathUseCase.MOVE_ALL_MAX).files.map { it.path }.toSet()
-                  selectedPaths = all.ifEmpty { inspection?.files?.map { it.path }?.toSet() ?: selectedPaths }
+                  // Ambil sampai MOVE_ALL_MAX biar file di luar preview UI ikut.
+                  // Inspect membaca disk — jalankan di IO, bukan main thread.
+                  selectAllScope.launch {
+                    val all = withContext(Dispatchers.IO) {
+                      scan.inspect(m.path, ScanPathUseCase.MOVE_ALL_MAX).files.map { it.path }.toSet()
+                    }
+                    selectedPaths = all.ifEmpty { inspection?.files?.map { it.path }?.toSet() ?: selectedPaths }
+                  }
                 }
               ) {
                 Icon(Icons.Default.SelectAll, contentDescription = "Pilih semua")
@@ -342,9 +416,10 @@ private fun MonitorCard(m: MonitorEntity, vm: MonitorViewModel, onEdit: () -> Un
               IconButton(
                 enabled = !busy,
                 onClick = {
-                  vm.trashSelected(selectedPaths)
+                  val paths = selectedPaths
                   selectMode = false
                   selectedPaths = emptySet()
+                  onTrash(paths)
                 }
               ) {
                 Icon(Icons.Default.Delete, contentDescription = "Trash")

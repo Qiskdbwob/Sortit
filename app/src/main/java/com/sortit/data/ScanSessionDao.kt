@@ -29,6 +29,4 @@ interface ScanSessionDao {
   @Query("UPDATE scan_sessions SET status = 'DISMISSED', updatedAt = :now WHERE id = :id")
   suspend fun dismiss(id: Long, now: Long)
 
-  @Query("UPDATE scan_sessions SET totalFound = :total, updatedAt = :now WHERE id = :id")
-  suspend fun updateTotal(id: Long, total: Int, now: Long)
 }

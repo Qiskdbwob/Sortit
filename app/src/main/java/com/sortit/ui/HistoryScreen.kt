@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,13 +52,14 @@ import com.sortit.ui.components.MonoText
 import com.sortit.ui.components.OneLinePath
 import com.sortit.ui.components.StampKind
 import com.sortit.ui.components.Ticket
+import com.sortit.ui.components.SortitDialog
 import com.sortit.ui.components.formatSize
 import com.sortit.util.StoragePaths
 import com.sortit.util.truncateFileName
 
 @Composable
 fun HistoryScreen(vm: HistoryViewModel, modifier: Modifier = Modifier) {
-  var tab by remember { mutableIntStateOf(0) }
+  var tab by rememberSaveable { mutableIntStateOf(0) }
   val trash by vm.trash.collectAsState()
   val moved by vm.moved.collectAsState()
   val msg by vm.msg.collectAsState()
@@ -65,6 +67,7 @@ fun HistoryScreen(vm: HistoryViewModel, modifier: Modifier = Modifier) {
   var selected by remember { mutableStateOf(setOf<String>()) }
   var extFilter by remember { mutableStateOf<String?>(null) }
   var destFilter by remember { mutableStateOf<String?>(null) }
+  var confirmDelete by remember { mutableStateOf(false) }
 
   LaunchedEffect(Unit) { vm.refresh() }
   LaunchedEffect(tab) { selected = emptySet(); extFilter = null; destFilter = null; query = "" }
@@ -164,10 +167,7 @@ fun HistoryScreen(vm: HistoryViewModel, modifier: Modifier = Modifier) {
           Icon(Icons.Default.Folder, contentDescription = "Pindah ke...")
         }
         if (tab == 0) {
-          IconButton(onClick = {
-            vm.deletePermanent(filtered.filter { it.path in selected })
-            selected = emptySet()
-          }) { Icon(Icons.Default.Delete, contentDescription = "Hapus permanen") }
+          IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Default.Delete, contentDescription = "Hapus permanen") }
         }
         TextButton(onClick = { selected = emptySet() }) { Text("Batal") }
       }
@@ -209,6 +209,25 @@ fun HistoryScreen(vm: HistoryViewModel, modifier: Modifier = Modifier) {
           }
         }
       }
+    }
+  }
+
+  if (confirmDelete) {
+    val targets = filtered.filter { it.path in selected }
+    SortitDialog(
+      title = "Hapus permanen?",
+      onDismiss = { confirmDelete = false },
+      confirmButton = {
+        androidx.compose.material3.Button(onClick = {
+          confirmDelete = false
+          vm.deletePermanent(targets)
+          selected = emptySet()
+        }) { Text("Ya, hapus") }
+      },
+      dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Batal") } }
+    ) {
+      Text("${targets.size} file akan dihapus permanen dari perangkat.")
+      Text("Tindakan ini tidak bisa dibatalkan — file tidak dipindah ke tempat lain.")
     }
   }
 }

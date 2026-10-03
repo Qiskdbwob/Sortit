@@ -91,7 +91,6 @@ private class MapFileOps : FileOps {
     }
 
     override fun isReadableDir(path: String): Boolean = readableDirs.contains(path.trimEnd('/'))
-    override fun childCount(path: String): Int = listFiles(path).size
     override fun restore(src: String, dstDir: String): String? = move(src, dstDir)
     override fun listTrashFiles(): List<File> =
         store.values.filter { it.absolutePath.startsWith(FileOps.TRASH_ROOT) }
@@ -174,10 +173,11 @@ class AutoApplyUseCaseTest {
 
         assertEquals(1, r.moved)
         assertEquals(0, r.failed)
-        assertEquals(listOf("/src/a.txt" to "/out/txt"), ops.moved)
+        // MOVE auto rule juga flat ke folder tujuan (tanpa subfolder ekstensi).
+        assertEquals(listOf("/src/a.txt" to "/out"), ops.moved)
         assertEquals(1, log.rows.size)
         assertEquals("OK", log.rows[0].status)
-        assertEquals("/out/txt/a.txt", log.rows[0].dstPath)
+        assertEquals("/out/a.txt", log.rows[0].dstPath)
         assertEquals("a.txt", log.rows[0].fileName)
         Unit
     }
@@ -239,7 +239,8 @@ class AutoApplyUseCaseTest {
         assertEquals(1, r.trashed)
         assertEquals(0, r.moved)
         assertEquals(1, ops.moved.size)
-        assertTrue(ops.moved[0].second.contains(".sortit-trash"))
+        // TRASH tetap dikelompokkan per ekstensi untuk retensi cleanup.
+        assertTrue(ops.moved[0].second.endsWith(".sortit-trash/txt"))
         Unit
     }
 
@@ -287,7 +288,7 @@ class AutoApplyUseCaseTest {
         val r = useCase.applyForMonitorPaths("/mon")
 
         assertEquals(1, r.moved)
-        assertEquals(listOf("/mon/sub/a.txt" to "/out/txt"), ops.moved)
+        assertEquals(listOf("/mon/sub/a.txt" to "/out"), ops.moved)
         Unit
     }
 
@@ -310,7 +311,7 @@ class AutoApplyUseCaseTest {
         val r = useCase.applyForMonitorPaths(mp)
 
         assertEquals(1, r.moved)
-        assertEquals(listOf("$mp/a.txt" to "/out/txt"), ops.moved)
+        assertEquals(listOf("$mp/a.txt" to "/out"), ops.moved)
         Unit
     }
 }

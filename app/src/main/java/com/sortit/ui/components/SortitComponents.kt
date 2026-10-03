@@ -1,5 +1,8 @@
 package com.sortit.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -43,6 +46,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +58,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
@@ -179,8 +188,8 @@ fun Ticket(
 @Composable
 fun SectionCard(
     title: String,
-    subtitle: String? = null,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
     accent: Color? = null,
     content: @Composable () -> Unit
 ) {
@@ -306,8 +315,19 @@ fun EmptyState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null
 ) {
+    // Fade-in halus supaya empty state tidak muncul mendadak.
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val alpha by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(280),
+        label = "emptyFadeIn"
+    )
     Column(
-        modifier = modifier.fillMaxWidth().padding(vertical = 32.dp, horizontal = 20.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer { this.alpha = alpha }
+            .padding(vertical = 32.dp, horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -416,8 +436,16 @@ fun ManifestTally(
                         modifier = Modifier.weight(1f).fillMaxHeight(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // Angka naik/turun beranimasi (0 → 12) supaya perubahan
+                        // jumlah terasa hidup, bukan teks statis.
+                        val numeric = item.value.toIntOrNull()
+                        val animatedCount by animateIntAsState(
+                            targetValue = numeric ?: 0,
+                            animationSpec = tween(600),
+                            label = "tallyCount"
+                        )
                         Text(
-                            text = item.value,
+                            text = if (numeric != null) animatedCount.toString() else item.value,
                             fontWeight = FontWeight.Bold,
                             color = item.color ?: MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace)

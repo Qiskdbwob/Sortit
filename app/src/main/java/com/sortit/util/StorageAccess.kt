@@ -25,15 +25,16 @@ object StorageAccess {
 
     fun needsRuntimeRequest(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.R
 
+    // minSdk 24 — jalur lama selalu >= M, jadi cukup dua cabang.
     fun runtimePermissions(): Array<String> =
-        when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> arrayOf(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
                 Manifest.permission.READ_MEDIA_IMAGES,
                 Manifest.permission.READ_MEDIA_VIDEO,
                 Manifest.permission.READ_MEDIA_AUDIO
             )
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-            else -> emptyArray()
+        } else {
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
 
     fun manageSettingsIntent(context: Context): Intent =

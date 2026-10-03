@@ -4,10 +4,12 @@ Android **file sorter** + **path monitor**. Offline, local-only. Material 3.
 
 **Rilis terbaru: [v1.4.0](https://github.com/Qiskdbwob/Sortit/releases/tag/v1.4.0)**
 
-## Fitur (v1.4)
+## Fitur
 
 ### Rules
 - Ekstensi + folder tujuan + sumber `Scan Semua` / `Folder Pilihan`
+- **Pindah = flat** — file masuk langsung ke folder tujuan (`/Download/1.txt`),
+  bukan subfolder ekstensi; Trash tetap dikelompokkan `.sortit-trash/<ekstensi>/`
 - **Filter size** (min/max MB) dan **umur** (file lebih tua dari N hari)
 - **Auto rule**: file di folder sumber langsung **Pindah** atau **Trash** tanpa scan/review (wajib Folder Pilihan)
 - **Exclude path per-rule** + **exclude global** (Pengaturan)
@@ -29,7 +31,11 @@ Android **file sorter** + **path monitor**. Offline, local-only. Material 3.
 - Pending scan memory (Lanjutkan / Scan ulang / Buang)
 - Global exclude di Pengaturan
 - Tema siang/malam/sistem + dynamic color
-- Trash auto-cleanup (retensi 1–90 hari)
+- Trash auto-cleanup (retensi 1–90 hari) + tombol **Bersihkan sekarang**
+- **Widget home screen** — ringkasan "hari ini" (dipindah/trash) + aktivitas terakhir
+  + tombol segarkan
+- **Quick Settings tile** — ketuk "Sortit" untuk menjalankan auto rule tanpa buka app
+- Animasi: transisi tab, angka dashboard, progress pindah/trash
 
 ## Alur singkat
 
@@ -56,13 +62,16 @@ domain/   FileScanner, ScanSort, SortFiles, AutoApply, ScanPath
 repo/     FileOps, Template/Monitor/Exclude/SortLog/ScanSession
 data/     Room sortit.db v3
 util/     SystemExcludes, Prefs, StoragePaths, TrashCleanup
+widget/   Widget home screen + Quick Settings tile
 ```
 
 ## Teknis
 - Kotlin, Jetpack Compose Material 3, Room, Coroutines/Flow, Coil, WorkManager
-- DB version **3** (`fallbackToDestructiveMigration` — dev; upgrade bersih = reinstall / data reset)
+- DB version **3** dengan **migrasi eksplisit** (`MIGRATION_1_2`, `MIGRATION_2_3`, defensif via
+  `PRAGMA table_info`) — data user (rule, monitor, log) tetap aman saat upgrade; tanpa
+  `fallbackToDestructiveMigration`
 - minSdk 24, target/compile 34
-- CI: unit test + assembleDebug · CD: signed release APK (keystore secrets)
+- CI: unit test + lint + assembleDebug · CD: signed release APK (keystore secrets)
 
 ## Build
 
@@ -99,8 +108,10 @@ MIT — [LICENSE](LICENSE)
 Workflow `.github/workflows/ci.yml` otomatis jalan pada push/PR ke `main`:
 
 1. **Unit test** — `./gradlew testDebugUnitTest`
-2. **Lint** — `./gradlew lintDebug`
+2. **Lint / static analysis** — `./gradlew lintDebug` (harus 0 error)
 3. **Build debug APK** — `./gradlew assembleDebug`
+
+CD (`.github/workflows/cd.yml`) merilis APK signed hanya setelah CI sukses.
 
 Jalankan lokal (butuh JDK 17 + Android SDK):
 
@@ -110,7 +121,7 @@ Jalankan lokal (butuh JDK 17 + Android SDK):
 ./gradlew assembleDebug       # APK debug
 ```
 
-> Catatan: perangkat development ini tidak punya Java, jadi build/test dijalankan di GitHub Actions (CI). Hasil APK debug bisa diunduh dari artefak Actions.
+> CI adalah jalur verifikasi utama: unit test, lint, dan build debug APK dijalankan di GitHub Actions. Artefak APK debug bisa diunduh dari Actions.
 
 ## Panduan Izin Storage (All Files Access)
 

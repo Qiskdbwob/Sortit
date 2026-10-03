@@ -89,79 +89,77 @@ class AutoApplyUseCase(
         return applyOnRoots(rule, roots, now)
     }
 
-    private suspend fun applyOnRoots(rule: TemplateEntity, roots: List<String>, now: Long): Result {
-        val exts = parseExtensions(rule.extensions)
-        if (exts.isEmpty()) return Result()
-        val excludes = excludeRepo.patternsForScan(listOf(rule.id))
-        val actionTrash = rule.autoAction.equals("TRASH", ignoreCase = true)
-        val baseDir = if (actionTrash) FileOps.TRASH_ROOT else rule.targetTreeUri
-        fileOps.mkdirs(baseDir)
+    private suspend fun applyOnRoots(rule: TemplateEntity, roots: List<String>, now: Long): Result =
+        withContext(Dispatchers.IO) {
+            val exts = parseExtensions(rule.extensions)
+            if (exts.isEmpty()) return@withContext Result()
+            val excludes = excludeRepo.patternsForScan(listOf(rule.id))
+            val actionTrash = rule.autoAction.equals("TRASH", ignoreCase = true)
+            val baseDir = if (actionTrash) FileOps.TRASH_ROOT else rule.targetTreeUri
+            fileOps.mkdirs(baseDir)
 
-        var moved = 0
-        var trashed = 0
-        var failed = 0
-        var skipped = 0
+            var moved = 0
+            var trashed = 0
+            var failed = 0
+            var skipped = 0
 
-        for (root in roots) {
-            if (SystemExcludes.isSystemPath(root) || FileScanner.isRootExcluded(root, excludes)) {
-                skipped++; continue
-            }
-            if (!fileOps.isReadableDir(root)) { skipped++; continue }
-            // Rekursif (walkDeep) supaya konsisten dengan scan manual.
-            val files = try {
-                withContext(Dispatchers.IO) {
+            for (root in roots) {
+                if (SystemExcludes.isSystemPath(root) || FileScanner.isRootExcluded(root, excludes)) {
+                    skipped++; continue
+                }
+                if (!fileOps.isReadableDir(root)) { skipped++; continue }
+                // Rekursif (walkDeep) supaya konsisten dengan scan manual.
+                val files = try {
                     fileOps.walkDeep(root).toList()
-                }
-            } catch (e: Exception) {
-                Log.e("AutoApplyUseCase", "Error walking root $root", e)
-                emptyList()
-            }
-            for (f in files) {
-                val path = f.absolutePath
-                if (SystemExcludes.isSystemPath(path)) { skipped++; continue }
-                if (!matchesExtension(f.name, exts)) { skipped++; continue }
-                if (FileScanner.isExcluded(path, f.name, excludes)) { skipped++; continue }
-                if (!FileScanner.matchesMeta(rule, f.length(), f.lastModified(), now)) { skipped++; continue }
-
-                val sub = "$baseDir/${extensionFolder(f.name)}"
-                fileOps.mkdirs(sub)
-                val dst = try {
-                    withContext(Dispatchers.IO) {
-                        fileOps.move(path, sub)
-                    }
                 } catch (e: Exception) {
-                    Log.e("AutoApplyUseCase", "Error moving file $path to $sub", e)
-                    null
+                    Log.e("AutoApplyUseCase", "Error walking root $root", e)
+                    emptyList()
                 }
-                if (dst != null) {
-                    // Dedup: hapus log lama yang menunjuk ke lokasi sumber ini.
-                    logDao.deleteByDstPath(path)
-                    logDao.insert(
-                        com.sortit.data.SortLogEntity(
-                            templateId = rule.id,
-                            fileName = f.name,
-                            srcPath = path,
-                            dstPath = dst,
-                            status = "OK",
-                            size = f.length()
+                for (f in files) {
+                    val path = f.absolutePath
+                    if (SystemExcludes.isSystemPath(path)) { skipped++; continue }
+                    if (!matchesExtension(f.name, exts)) { skipped++; continue }
+                    if (FileScanner.isExcluded(path, f.name, excludes)) { skipped++; continue }
+                    if (!FileScanner.matchesMeta(rule, f.length(), f.lastModified(), now)) { skipped++; continue }
+
+                    // MOVE: langsung ke folder tujuan rule. TRASH: dikelompokkan per ekstensi.
+                    val dstDir = if (actionTrash) "$baseDir/${extensionFolder(f.name)}" else baseDir
+                    fileOps.mkdirs(dstDir)
+                    val dst = try {
+                        fileOps.move(path, dstDir)
+                    } catch (e: Exception) {
+                        Log.e("AutoApplyUseCase", "Error moving file $path to $dstDir", e)
+                        null
+                    }
+                    if (dst != null) {
+                        // Dedup: hapus log lama yang menunjuk ke lokasi sumber ini.
+                        logDao.deleteByDstPath(path)
+                        logDao.insert(
+                            com.sortit.data.SortLogEntity(
+                                templateId = rule.id,
+                                fileName = f.name,
+                                srcPath = path,
+                                dstPath = dst,
+                                status = "OK",
+                                size = f.length()
+                            )
                         )
-                    )
-                    if (actionTrash) trashed++ else moved++
-                } else {
-                    failed++
-                    logDao.insert(
-                        com.sortit.data.SortLogEntity(
-                            templateId = rule.id,
-                            fileName = f.name,
-                            srcPath = path,
-                            dstPath = "",
-                            status = "FAIL",
-                            size = f.length()
+                        if (actionTrash) trashed++ else moved++
+                    } else {
+                        failed++
+                        logDao.insert(
+                            com.sortit.data.SortLogEntity(
+                                templateId = rule.id,
+                                fileName = f.name,
+                                srcPath = path,
+                                dstPath = "",
+                                status = "FAIL",
+                                size = f.length()
+                            )
                         )
-                    )
+                    }
                 }
             }
+            Result(moved, trashed, failed, skipped)
         }
-        return Result(moved, trashed, failed, skipped)
-    }
 }

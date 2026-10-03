@@ -59,25 +59,6 @@ class FileScannerExcludeTest {
     }
 
     @Test
-    fun `scanTemplate merges exclude like global`() {
-        val files = listOf(
-            File("/a/keep.txt"),
-            File("/b/skip.txt")
-        )
-        val ops = FakeFileOps(files)
-        val tpl = TemplateEntity(
-            id = 1,
-            name = "t",
-            extensions = "txt",
-            targetTreeUri = "/out",
-            sourceMode = "FOLDERS",
-            sourceDirs = "/a,/b"
-        )
-        val out = FileScanner.scanTemplate(tpl, ops, setOf("/b"), mutableSetOf())
-        assertEquals(listOf("/a/keep.txt"), out.map { it.item.path })
-    }
-
-    @Test
     fun `matchesMeta size and age`() {
         val base = TemplateEntity(
             name = "m", extensions = "txt", targetTreeUri = "/out",

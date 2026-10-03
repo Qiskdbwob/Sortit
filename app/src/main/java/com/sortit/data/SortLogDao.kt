@@ -36,9 +36,6 @@ interface SortLogDao {
   @Query("SELECT * FROM sort_logs WHERE dstPath NOT LIKE '%/.sortit-trash/%' ORDER BY timestamp DESC LIMIT :limit")
   suspend fun listMoved(limit: Int = 2000): List<SortLogEntity>
 
-  @Query("SELECT * FROM sort_logs WHERE status = 'OK' ORDER BY timestamp DESC LIMIT :limit")
-  suspend fun listOk(limit: Int = 3000): List<SortLogEntity>
-
   /** Log sukses + gagal (FAIL/SKIP) — dipakai History supaya file yang gagal/lewat terlihat. */
   @Query("SELECT * FROM sort_logs ORDER BY timestamp DESC LIMIT :limit")
   suspend fun listAll(limit: Int = 3000): List<SortLogEntity>
@@ -62,6 +59,28 @@ interface SortLogDao {
   @Query("SELECT COUNT(*) FROM sort_logs WHERE status = 'FAIL'")
   fun observeFailedCount(): Flow<Int>
 
-  @Query("DELETE FROM sort_logs WHERE timestamp < :cutoff")
-  suspend fun deleteOlderThan(cutoff: Long)
+  /** Query sekali-jalan untuk widget home screen (bukan Flow). */
+  @Query("SELECT COUNT(*) FROM sort_logs WHERE status = 'OK' AND dstPath NOT LIKE '%/.sortit-trash/%' AND timestamp >= :since")
+  suspend fun movedCountSinceOnce(since: Long): Int
+
+  @Query("SELECT COUNT(*) FROM sort_logs WHERE status = 'OK' AND dstPath LIKE '%/.sortit-trash/%' AND timestamp >= :since")
+  suspend fun trashedCountSinceOnce(since: Long): Int
+
+  @Query("SELECT * FROM sort_logs ORDER BY timestamp DESC LIMIT 1")
+  suspend fun latestOnce(): SortLogEntity?
+
+  /**
+   * Retensi HANYA log trash (file di .sortit-trash sudah ikut dibersihkan).
+   * Log pindah/undo tidak boleh ikut terhapus — itu satu-satunya jejak untuk
+   * fitur Undo & tab "Dipindahkan".
+   */
+  @Query("DELETE FROM sort_logs WHERE dstPath LIKE '%/.sortit-trash/%' AND timestamp < :cutoff")
+  suspend fun deleteTrashedOlderThan(cutoff: Long)
+
+  /**
+   * Batasi pertumbuhan tabel: sisakan [max] baris terbaru. Tanpa ini
+   * sort_logs tumbuh tanpa batas untuk user aktif.
+   */
+  @Query("DELETE FROM sort_logs WHERE id NOT IN (SELECT id FROM sort_logs ORDER BY timestamp DESC, id DESC LIMIT :max)")
+  suspend fun trimTo(max: Int)
 }

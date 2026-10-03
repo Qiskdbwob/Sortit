@@ -13,7 +13,6 @@ interface FileOps {
   fun move(src: String, dstDir: String): String?
   fun mkdirs(dir: String): Boolean
   fun isReadableDir(path: String): Boolean
-  fun childCount(path: String): Int
   /** Pindah file ke folder tujuan (bukan sub-ext). Return path baru atau null. */
   fun restore(src: String, dstDir: String): String?
   /** List semua file di trash (rekursif dangkal per subfolder ext). */
@@ -80,6 +79,13 @@ class RealFileOps : FileOps {
     val d = File(dstDir)
     if (!d.exists()) d.mkdirs()
 
+    // Trash perlu mtime = waktu masuk trash (retensi cleanup pakai lastModified),
+    // tapi pindah biasa/undo HARUS mempertahankan tanggal asal file — kalau tidak,
+    // foto/dokumen yang dipindah berubah jadi "hari ini" di galeri & sort by date.
+    val originalMtime = s.lastModified()
+    val toTrash = dstDir.trimEnd('/').startsWith(FileOps.TRASH_ROOT)
+    val newMtime = if (toTrash) System.currentTimeMillis() else originalMtime
+
     var target = File(d, s.name)
     // Source = destination: tidak perlu dipindah (EC-02: SKIP, bukan OK).
     if (s.absolutePath == target.absolutePath) return null
@@ -94,12 +100,12 @@ class RealFileOps : FileOps {
     }
 
     if (s.renameTo(target)) {
-      target.setLastModified(System.currentTimeMillis())
+      target.setLastModified(newMtime)
       return target.absolutePath
     }
     val copied = copyThenDelete(s, target)
     if (copied != null) {
-      File(copied).setLastModified(System.currentTimeMillis())
+      File(copied).setLastModified(newMtime)
     }
     return copied
   }
@@ -110,9 +116,6 @@ class RealFileOps : FileOps {
     val d = File(path)
     return d.exists() && d.isDirectory && d.canRead()
   }
-
-  override fun childCount(path: String): Int = listFiles(path).size
-
 
   override fun restore(src: String, dstDir: String): String? = move(src, dstDir)
 
