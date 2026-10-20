@@ -187,16 +187,7 @@ private fun MainTabs(
         }
       )
     },
-    floatingActionButton = {
-      FloatingActionButton(
-        onClick = { showQuickSheet = true },
-        modifier = Modifier.padding(bottom = 26.dp),
-        containerColor = MaterialTheme.colorScheme.primary
-      ) {
-        Icon(Icons.Default.Add, contentDescription = "Aksi cepat")
-      }
-    },
-    bottomBar = {
+      bottomBar = {
       NavigationBar {
         NavigationBarItem(
           selected = tab == 0,
@@ -210,11 +201,20 @@ private fun MainTabs(
           icon = { Icon(Icons.Default.Folder, contentDescription = "Monitor") },
           label = { Text("Monitor") }
         )
-        // placeholder tengah untuk FAB
         NavigationBarItem(
           selected = false,
           onClick = { showQuickSheet = true },
-          icon = { Spacer(Modifier.size(1.dp)) },
+          icon = {
+            Surface(
+              shape = androidx.compose.foundation.shape.CircleShape,
+              color = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(48.dp)
+            ) {
+              Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Icon(Icons.Default.Add, contentDescription = "Aksi cepat", tint = MaterialTheme.colorScheme.onPrimary)
+              }
+            }
+          },
           label = { Text("") }
         )
         NavigationBarItem(
