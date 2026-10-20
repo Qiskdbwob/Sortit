@@ -37,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,7 +48,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +57,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sortit.data.TemplateEntity
+import com.sortit.ui.ScanUiState
+import com.sortit.util.StorageAccess
 import com.sortit.repo.TemplateRepository
 import com.sortit.ui.components.SortitDialog
 
@@ -66,11 +69,59 @@ fun MainScreen(
   monitorVm: MonitorViewModel,
   scanVm: ScanViewModel,
   historyVm: HistoryViewModel,
-  onDynamicColorChange: (Boolean) -> Unit,
-  themeMode: String,
-  onThemeModeChange: (String) -> Unit
+  onDynamicColorChange: (Boolean) -> Unit = {},
+  themeMode: String = "system",
+  onThemeModeChange: (String) -> Unit = {}
 ) {
-  PermissionGate(legacy = false, onGrant = {}) {
+  val context = LocalContext.current
+  var granted by remember { mutableStateOf(StorageAccess.has(context)) }
+  val legacyLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+    contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+  ) { granted = StorageAccess.has(context) }
+  val settingsLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+    contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+  ) { granted = StorageAccess.has(context) }
+  val notifLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+    contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+  ) { }
+
+  LaunchedEffect(Unit) { granted = StorageAccess.has(context) }
+  LaunchedEffect(granted) {
+    if (!granted) return@LaunchedEffect
+    if (
+      android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+      androidx.core.content.ContextCompat.checkSelfPermission(
+        context, android.Manifest.permission.POST_NOTIFICATIONS
+      ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+    ) {
+      notifLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+  }
+
+  if (!granted) {
+    PermissionGate(
+      legacy = StorageAccess.needsRuntimeRequest(),
+      onGrant = {
+        if (StorageAccess.needsRuntimeRequest()) {
+          legacyLauncher.launch(StorageAccess.runtimePermissions())
+        } else {
+          settingsLauncher.launch(StorageAccess.manageSettingsIntent(context))
+        }
+      }
+    )
+    return
+  }
+
+  val scanState by scanVm.state.collectAsState()
+  androidx.activity.compose.BackHandler(enabled = scanState !is ScanUiState.Idle) {
+    when (val s = scanState) {
+      is ScanUiState.Preview -> scanVm.closePreview()
+      is ScanUiState.Scanning -> scanVm.reset()
+      is ScanUiState.Running -> Unit
+      else -> scanVm.reset()
+    }
+  }
+  Box(Modifier.fillMaxSize()) {
     MainTabs(
       dashboardVm = dashboardVm,
       templateVm = templateVm,
@@ -81,6 +132,10 @@ fun MainScreen(
       themeMode = themeMode,
       onThemeModeChange = onThemeModeChange
     )
+    when (val s = scanState) {
+      is ScanUiState.Idle -> Unit
+      else -> ScanFlowScreen(state = s, scanVm = scanVm)
+    }
   }
 }
 
@@ -281,10 +336,13 @@ private fun QuickAction(title: String, subtitle: String, danger: Boolean = false
 
 // PermissionGate and ScanLauncherDialog keep below
 @Composable
-fun PermissionGate(legacy: Boolean, onGrant: () -> Unit) {
-  // keep original implementation
-  Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+internal fun PermissionGate(legacy: Boolean, onGrant: () -> Unit) {
+  Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Column(
+      Modifier.fillMaxSize().padding(28.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center
+    ) {
       Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
       Spacer(Modifier.height(16.dp))
       Text("Izin storage dibutuhkan", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
