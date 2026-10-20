@@ -1,7 +1,9 @@
 package com.sortit.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -37,6 +40,7 @@ import com.sortit.repo.RealFileOps
 import com.sortit.ui.components.EmptyState
 import com.sortit.ui.components.Kicker
 import com.sortit.ui.components.ManifestTally
+import com.sortit.ui.components.MediaThumb
 import com.sortit.ui.components.MonoText
 import com.sortit.ui.components.SectionCard
 import com.sortit.ui.components.StampBadge
@@ -54,7 +58,7 @@ fun DashboardScreen(
   vm: DashboardViewModel,
   scanVm: ScanViewModel,
   onScan: () -> Unit,
-  onAddRule: () -> Unit,
+  onOpenMonitor: (Long) -> Unit,
   modifier: Modifier = Modifier
 ) {
   val templates by vm.templates.collectAsState()
@@ -107,27 +111,11 @@ fun DashboardScreen(
         }
       }
     }
-    item {
-      SectionCard(title = "Aksi cepat", subtitle = "Scan beberapa rule sekaligus atau buat rule baru.") {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-          Button(onClick = onScan, modifier = Modifier.weight(1f)) {
-            Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.size(8.dp))
-            Text("Scan rules")
-          }
-          OutlinedButton(onClick = onAddRule, modifier = Modifier.weight(1f)) {
-            Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.size(8.dp))
-            Text("Rule baru")
-          }
-        }
-      }
-    }
-    item { Kicker("Monitor path", modifier = Modifier.padding(top = 2.dp)) }
+    item { Kicker("Monitor", modifier = Modifier.padding(top = 2.dp)) }
     if (monitors.isEmpty()) {
       item { EmptyState(Icons.Default.Folder, "Belum ada monitor", "Tambah path seperti WA Statuses untuk melihat file terbaru.") }
     } else {
-      items(monitors.take(4)) { MonitorStatusLine(it) }
+      items(monitors.take(4)) { MonitorSummaryCard(it, onOpenMonitor) }
     }
     item { Kicker("Aktivitas terbaru", modifier = Modifier.padding(top = 2.dp)) }
     if (recent.isEmpty()) {
@@ -139,29 +127,44 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun MonitorStatusLine(m: MonitorEntity) {
+private fun MonitorSummaryCard(m: MonitorEntity, onOpenMonitor: (Long) -> Unit) {
+  val context = LocalContext.current
   val scan = remember { ScanPathUseCase(RealFileOps()) }
   val inspection by produceState<ScanPathUseCase.PathInspection?>(initialValue = null, m.path, m.enabled) {
-    // Satu kali per perubahan key (path/enabled) — tidak polling terus-menerus.
-    // Refresh terjadi saat user navigasi balik ke Beranda (recompose).
-    value = withContext(Dispatchers.IO) { if (m.enabled) scan.inspect(m.path) else null }
+    value = withContext(Dispatchers.IO) { if (m.enabled) scan.inspect(m.path, 4) else null }
   }
   val paths = remember(m.path) { splitMonitorPaths(m.path) }
   val pathLabel = if (paths.size <= 1) (paths.firstOrNull() ?: m.path) else "${paths.size} folder · ${paths.first()}"
-  StubTicket(
-    title = m.name,
-    path = pathLabel,
-    stub = {
-      if (!m.enabled) {
-        StampBadge("Nonaktif", StampKind.PENDING)
-      } else {
-        val insp = inspection
-        if (insp == null) StampBadge("Cek", StampKind.PENDING)
-        else if (insp.readable) StampBadge("OK \u00b7 ${insp.fileCount}", StampKind.MOVE)
-        else StampBadge("Error", StampKind.WARN)
+  val files = inspection?.files ?: emptyList()
+  val count = inspection?.fileCount ?: 0
+  SectionCard(title = m.name, subtitle = pathLabel) {
+    Row(
+      modifier = Modifier.fillMaxWidth().clickable { onOpenMonitor(m.id) },
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        files.take(4).forEach { f ->
+          MediaThumb(f.name, f.path, f.mimeType, f.isMedia, Modifier.size(44.dp))
+        }
+        if (count > 4) {
+          Box(
+            modifier = Modifier.size(44.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(3.dp)),
+            contentAlignment = Alignment.Center
+          ) {
+            Text("+${count - 4}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+          }
+        }
       }
+      StampBadge(
+        if (!m.enabled) "Nonaktif"
+        else if (inspection == null) "Cek"
+        else if (inspection!!.readable) "OK · ${inspection!!.fileCount}"
+        else "Error",
+        if (!m.enabled) StampKind.PENDING else if (inspection == null) StampKind.PENDING else if (inspection!!.readable) StampKind.MOVE else StampKind.WARN
+      )
     }
-  )
+  }
 }
 
 @Composable

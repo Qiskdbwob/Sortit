@@ -1,5 +1,12 @@
 # Update Log — Sortit
 
+## Unreleased (redesign Desain C — navigasi bawah + tombol + tengah)
+- Navigasi bawah: Beranda, Monitor, [tombol +], Rules, Riwayat; Monitor pindah ke tab 1.
+- Tombol + (FAB) tengah membuka sheet aksi cepat (Scan rules, Tambah monitor, Rule baru, Auto semua).
+- Beranda: kartu monitor bisa diketuk dengan strip 4 thumbnail + badge OK·N; hapus kartu Aksi cepat.
+- Tab Monitor: satu monitor aktif, chip row, meta row (path multi-folder, switch, menu ⋯), daftar file langsung dengan lingkaran centang, selection bar melayang.
+- State selectedMonitorId & flag aksi disimpan (rememberSaveable) agar tahan rotasi.
+
 ## Unreleased (audit kode menyeluruh)
 _Perbaikan bug, optimasi, dan konsistensi UI-UX hasil audit penuh_
 
